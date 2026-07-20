@@ -118,8 +118,10 @@ margin-bottom:14px; font-family:'Poppins',sans-serif; font-size:14px;
 #manualError{color:#A34A3A; font-size:13px; margin-bottom:10px; display:none;}
 .modal-actions{display:flex; gap:10px; justify-content:flex-end;}
 .modal-actions button{padding:10px 20px; border-radius:999px; font-size:12px; cursor:pointer;}
-#manualCancelBtn{background:var(--bg); border:1px solid var(--line); color:var(--charcoal);}
+#manualCancelBtn, #apptDetailCloseBtn{background:var(--bg); border:1px solid var(--line); color:var(--charcoal);}
 #manualConfirmBtn{background:var(--charcoal); color:var(--bg); border:none;}
+#apptDetailCancelBtn{background:#A34A3A; color:var(--bg); border:none;}
+#apptDetailInfo{font-size:14px; color:var(--charcoal); line-height:1.7;}
 @media (max-width:700px){
 .cal-grid{grid-template-columns:repeat(7, 130px);}
 }
@@ -177,6 +179,16 @@ margin-bottom:14px; font-family:'Poppins',sans-serif; font-size:14px;
 </div>
 </div>
 </div>
+<div id="apptDetailModal" class="modal-overlay">
+<div class="modal-box">
+<h3>Afspraak</h3>
+<p id="apptDetailInfo"></p>
+<div class="modal-actions">
+<button id="apptDetailCloseBtn">Sluiten</button>
+<button id="apptDetailCancelBtn">Afspraak annuleren</button>
+</div>
+</div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = 'https://jdfcheqimbxffxldedey.supabase.co';
@@ -192,6 +204,7 @@ let allAppointments = [];
 let servicesList = [];
 let calWeekOffset = 0;
 let pendingSlot = null;
+let currentDetailAppt = null;
 const openingHours = {
   1: { open: '18:30', close: '20:30' },
   3: { open: '13:00', close: '21:00' },
@@ -424,13 +437,27 @@ document.getElementById('manualBookingModal').classList.remove('open');
 await loadAppointments();
 });
 function showApptDetail(appt){
-var details = appt.client_name + ' — ' + appt.service_name;
-if(appt.client_email){ details += '\n' + appt.client_email; }
-if(appt.client_phone){ details += '\n' + appt.client_phone; }
-details += '\n\nDeze afspraak annuleren?';
-var doCancel = confirm(details);
-if(doCancel){ cancelAppointment(appt.id); }
+currentDetailAppt = appt;
+var lines = [appt.client_name + ' — ' + appt.service_name];
+if(appt.client_email){ lines.push(appt.client_email); }
+if(appt.client_phone){ lines.push(appt.client_phone); }
+document.getElementById('apptDetailInfo').innerHTML = lines.join('<br>');
+document.getElementById('apptDetailModal').classList.add('open');
 }
+document.getElementById('apptDetailCloseBtn').addEventListener('click', () => {
+document.getElementById('apptDetailModal').classList.remove('open');
+});
+document.getElementById('apptDetailCancelBtn').addEventListener('click', async () => {
+if(currentDetailAppt){
+await cancelAppointment(currentDetailAppt.id);
+document.getElementById('apptDetailModal').classList.remove('open');
+}
+});
+document.getElementById('apptDetailModal').addEventListener('click', (e) => {
+if(e.target.id === 'apptDetailModal'){
+document.getElementById('apptDetailModal').classList.remove('open');
+}
+});
 supabaseClient.auth.getSession().then((result) => {
 if(result.data.session){ showAgenda(); }
 });
