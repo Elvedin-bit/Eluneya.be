@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Agenda — Eluneya</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFFFFF; --cream:#F6F2EC; --charcoal:#292420; --charcoal-soft:#6E655B;
+    --taupe:#8C7561; --taupe-dark:#6B5847; --line:rgba(140,117,97,0.25);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:var(--cream); color:var(--charcoal);
+    font-family:'Poppins',sans-serif; font-weight:300; line-height:1.6;
+    min-height:100vh; display:flex; flex-direction:column;
+  }
+  h1,h2{font-family:'Cormorant Garamond',serif; font-weight:500;}
+  .topbar{
+    background:var(--charcoal); color:var(--bg);
+    padding:20px 32px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .topbar .logo{font-family:'Cormorant Garamond',serif; font-size:20px; letter-spacing:0.28em;}
+  .topbar button{
+    background:transparent; border:1px solid rgba(255,255,255,0.4); color:var(--bg);
+    padding:9px 20px; border-radius:999px; font-size:12px; cursor:pointer;
+  }
+  main{flex:1; max-width:900px; margin:0 auto; padding:40px 24px; width:100%;}
+
+  #loginView{
+    max-width:360px; margin:80px auto; background:var(--bg);
+    border:1px solid var(--line); border-radius:12px; padding:32px;
+  }
+  #loginView h1{font-size:26px; margin-bottom:20px;}
+  #loginView input{
+    width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:8px;
+    margin-bottom:14px; font-family:'Poppins',sans-serif; font-size:14px;
+  }
+  #loginView button{
+    width:100%; padding:13px; background:var(--charcoal); color:var(--bg);
+    border:none; border-radius:999px; font-size:13px; letter-spacing:0.06em;
+    text-transform:uppercase; cursor:pointer;
+  }
+  #loginError{color:#A34A3A; font-size:13px; margin-top:10px; display:none;}
+
+  #agendaView{display:none;}
+  .filters{display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;}
+  .filters button{
+    padding:8px 18px; border-radius:999px; border:1px solid var(--line);
+    background:var(--bg); font-size:12px; cursor:pointer; color:var(--charcoal-soft);
+  }
+  .filters button.active{background:var(--charcoal); color:var(--bg); border-color:var(--charcoal);}
+
+  .appt-card{
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    padding:16px 20px; margin-bottom:12px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .appt-date{min-width:120px; font-weight:500; font-size:14px;}
+  .appt-service{flex:1; min-width:160px; color:var(--charcoal-soft); font-size:14px;}
+  .appt-client{min-width:180px; font-size:13px;}
+  .appt-client a{color:var(--taupe-dark); text-decoration:none;}
+  .appt-status{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.06em;
+    padding:4px 10px; border-radius:999px;
+  }
+  .appt-status.confirmed{background:#E1F0E6; color:#2D6A46;}
+  .appt-status.cancelled{background:#F3E4E1; color:#A34A3A; text-decoration:line-through;}
+  .appt-card button{
+    padding:7px 14px; border-radius:999px; border:1px solid var(--line);
+    background:var(--bg); font-size:12px; cursor:pointer;
+  }
+  #emptyState{color:var(--charcoal-soft); font-size:14px; padding:20px 0;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">ELUNEYA — agenda</span>
+  <button id="logoutBtn" style="display:none;">Uitloggen</button>
+</div>
+
+<main>
+  <div id="loginView">
+    <h1>Inloggen</h1>
+    <input type="email" id="loginEmail" placeholder="E-mailadres">
+    <input type="password" id="loginPassword" placeholder="Wachtwoord">
+    <button id="loginBtn">Inloggen</button>
+    <p id="loginError">Ongeldige inloggegevens.</p>
+  </div>
+
+  <div id="agendaView">
+    <h2 style="margin-bottom:24px;">Aankomende afspraken</h2>
+    <div class="filters">
+      <button class="filter-btn active" data-filter="upcoming">Aankomend</button>
+      <button class="filter-btn" data-filter="all">Alles</button>
+      <button class="filter-btn" data-filter="cancelled">Geannuleerd</button>
+    </div>
+    <div id="apptList"></div>
+    <p id="emptyState" style="display:none;">Geen afspraken gevonden.</p>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // Zelfde Supabase-project als index.html
+  const SUPABASE_URL = 'https://jdfcheqimbxffxldedey.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_CgzLJMXvMZmC_x7K7wEj5w_tX7SVtNI';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const loginView = document.getElementById('loginView');
+  const agendaView = document.getElementById('agendaView');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const apptList = document.getElementById('apptList');
+  const emptyState = document.getElementById('emptyState');
+  let currentFilter = 'upcoming';
+  let allAppointments = [];
+
+  document.getElementById('loginBtn').addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if(error){
+      document.getElementById('loginError').style.display = 'block';
+    } else {
+      showAgenda();
+    }
+  });
+
+  logoutBtn.addEventListener('click', async () => {
+    await supabaseClient.auth.signOut();
+    location.reload();
+  });
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      renderList();
+    });
+  });
+
+  async function showAgenda(){
+    loginView.style.display = 'none';
+    agendaView.style.display = 'block';
+    logoutBtn.style.display = 'inline-block';
+    await loadAppointments();
+  }
+
+  async function loadAppointments(){
+    const { data, error } = await supabaseClient
+      .from('appointments')
+      .select('*')
+      .order('appointment_date', { ascending: true })
+      .order('appointment_time', { ascending: true });
+    if(error){ console.error(error); return; }
+    allAppointments = data || [];
+    renderList();
+  }
+
+  function renderList(){
+    const today = new Date().toISOString().slice(0,10);
+    let filtered = allAppointments;
+    if(currentFilter === 'upcoming'){
+      filtered = allAppointments.filter(a => a.status === 'confirmed' && a.appointment_date >= today);
+    } else if(currentFilter === 'cancelled'){
+      filtered = allAppointments.filter(a => a.status === 'cancelled');
+    }
+
+    apptList.innerHTML = '';
+    emptyState.style.display = filtered.length ? 'none' : 'block';
+
+    filtered.forEach(a => {
+      const card = document.createElement('div');
+      card.className = 'appt-card';
+      const dateObj = new Date(a.appointment_date + 'T' + a.appointment_time);
+      const dateStr = dateObj.toLocaleDateString('nl-BE', { weekday:'short', day:'numeric', month:'short' });
+      const timeStr = a.appointment_time.slice(0,5);
+
+      card.innerHTML = `
+        <div class="appt-date">${dateStr}<br><span style="color:var(--charcoal-soft);font-size:13px;">${timeStr}</span></div>
+        <div class="appt-service">${a.service_name}</div>
+        <div class="appt-client">
+          ${a.client_name}<br>
+          <a href="mailto:${a.client_email}">${a.client_email}</a>
+          ${a.client_phone ? '<br>' + a.client_phone : ''}
+        </div>
+        <span class="appt-status ${a.status}">${a.status === 'confirmed' ? 'bevestigd' : 'geannuleerd'}</span>
+      `;
+
+      if(a.status === 'confirmed'){
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Annuleren';
+        cancelBtn.addEventListener('click', () => cancelAppointment(a.id));
+        card.appendChild(cancelBtn);
+      }
+
+      apptList.appendChild(card);
+    });
+  }
+
+  async function cancelAppointment(id){
+    const { error } = await supabaseClient
+      .from('appointments')
+      .update({ status: 'cancelled' })
+      .eq('id', id);
+    if(error){ console.error(error); return; }
+    await loadAppointments();
+  }
+
+  // Check of er al een ingelogde sessie is
+  supabaseClient.auth.getSession().then(({ data }) => {
+    if(data.session){ showAgenda(); }
+  });
+</script>
+
+</body>
+</html>
