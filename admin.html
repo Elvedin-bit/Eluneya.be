@@ -9,215 +9,431 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#FFFFFF; --cream:#F6F2EC; --charcoal:#292420; --charcoal-soft:#6E655B;
-    --taupe:#8C7561; --taupe-dark:#6B5847; --line:rgba(140,117,97,0.25);
-  }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{
-    background:var(--cream); color:var(--charcoal);
-    font-family:'Poppins',sans-serif; font-weight:300; line-height:1.6;
-    min-height:100vh; display:flex; flex-direction:column;
-  }
-  h1,h2{font-family:'Cormorant Garamond',serif; font-weight:500;}
-  .topbar{
-    background:var(--charcoal); color:var(--bg);
-    padding:20px 32px; display:flex; align-items:center; justify-content:space-between;
-  }
-  .topbar .logo{font-family:'Cormorant Garamond',serif; font-size:20px; letter-spacing:0.28em;}
-  .topbar button{
-    background:transparent; border:1px solid rgba(255,255,255,0.4); color:var(--bg);
-    padding:9px 20px; border-radius:999px; font-size:12px; cursor:pointer;
-  }
-  main{flex:1; max-width:900px; margin:0 auto; padding:40px 24px; width:100%;}
-
-  #loginView{
-    max-width:360px; margin:80px auto; background:var(--bg);
-    border:1px solid var(--line); border-radius:12px; padding:32px;
-  }
-  #loginView h1{font-size:26px; margin-bottom:20px;}
-  #loginView input{
-    width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:8px;
-    margin-bottom:14px; font-family:'Poppins',sans-serif; font-size:14px;
-  }
-  #loginView button{
-    width:100%; padding:13px; background:var(--charcoal); color:var(--bg);
-    border:none; border-radius:999px; font-size:13px; letter-spacing:0.06em;
-    text-transform:uppercase; cursor:pointer;
-  }
-  #loginError{color:#A34A3A; font-size:13px; margin-top:10px; display:none;}
-
-  #agendaView{display:none;}
-  .filters{display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;}
-  .filters button{
-    padding:8px 18px; border-radius:999px; border:1px solid var(--line);
-    background:var(--bg); font-size:12px; cursor:pointer; color:var(--charcoal-soft);
-  }
-  .filters button.active{background:var(--charcoal); color:var(--bg); border-color:var(--charcoal);}
-
-  .appt-card{
-    background:var(--bg); border:1px solid var(--line); border-radius:10px;
-    padding:16px 20px; margin-bottom:12px;
-    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
-  }
-  .appt-date{min-width:120px; font-weight:500; font-size:14px;}
-  .appt-service{flex:1; min-width:160px; color:var(--charcoal-soft); font-size:14px;}
-  .appt-client{min-width:180px; font-size:13px;}
-  .appt-client a{color:var(--taupe-dark); text-decoration:none;}
-  .appt-status{
-    font-size:11px; text-transform:uppercase; letter-spacing:0.06em;
-    padding:4px 10px; border-radius:999px;
-  }
-  .appt-status.confirmed{background:#E1F0E6; color:#2D6A46;}
-  .appt-status.cancelled{background:#F3E4E1; color:#A34A3A; text-decoration:line-through;}
-  .appt-card button{
-    padding:7px 14px; border-radius:999px; border:1px solid var(--line);
-    background:var(--bg); font-size:12px; cursor:pointer;
-  }
-  #emptyState{color:var(--charcoal-soft); font-size:14px; padding:20px 0;}
+:root{
+--bg:#FFFFFF; --cream:#F6F2EC; --charcoal:#292420; --charcoal-soft:#6E655B;
+--taupe:#8C7561; --taupe-dark:#6B5847; --line:rgba(140,117,97,0.25);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+background:var(--cream); color:var(--charcoal);
+font-family:'Poppins',sans-serif; font-weight:300; line-height:1.6;
+min-height:100vh; display:flex; flex-direction:column;
+}
+h1,h2,h3{font-family:'Cormorant Garamond',serif; font-weight:500;}
+.topbar{
+background:var(--charcoal); color:var(--bg);
+padding:20px 32px; display:flex; align-items:center; justify-content:space-between;
+}
+.topbar .logo{font-family:'Cormorant Garamond',serif; font-size:20px; letter-spacing:0.28em;}
+.topbar button{
+background:transparent; border:1px solid rgba(255,255,255,0.4); color:var(--bg);
+padding:9px 20px; border-radius:999px; font-size:12px; cursor:pointer;
+}
+main{flex:1; max-width:1100px; margin:0 auto; padding:40px 24px; width:100%;}
+#loginView{
+max-width:360px; margin:80px auto; background:var(--bg);
+border:1px solid var(--line); border-radius:12px; padding:32px;
+}
+#loginView h1{font-size:26px; margin-bottom:20px;}
+#loginView input{
+width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:8px;
+margin-bottom:14px; font-family:'Poppins',sans-serif; font-size:14px;
+}
+#loginView button{
+width:100%; padding:13px; background:var(--charcoal); color:var(--bg);
+border:none; border-radius:999px; font-size:13px; letter-spacing:0.06em;
+text-transform:uppercase; cursor:pointer;
+}
+#loginError{color:#A34A3A; font-size:13px; margin-top:10px; display:none;}
+#agendaView{display:none;}
+.calendar-section{margin-bottom:44px;}
+.week-nav{display:flex; align-items:center; gap:16px; margin-bottom:16px;}
+.week-nav button{
+background:var(--bg); border:1px solid var(--line); border-radius:999px;
+width:32px; height:32px; cursor:pointer; font-size:16px; color:var(--charcoal);
+}
+.week-nav span{font-size:14px; font-weight:500;}
+.cal-grid{
+display:grid; grid-template-columns:repeat(7, minmax(120px,1fr));
+gap:8px; overflow-x:auto;
+}
+.cal-day{
+background:var(--bg); border:1px solid var(--line); border-radius:10px;
+padding:10px; min-height:130px; display:flex; flex-direction:column; gap:6px;
+}
+.cal-day-header{
+font-size:12px; text-transform:uppercase; letter-spacing:0.05em;
+color:var(--charcoal-soft); margin-bottom:4px; text-align:center;
+}
+.cal-closed{font-size:12px; color:var(--charcoal-soft); text-align:center; margin-top:24px;}
+.cal-slot{
+border-radius:8px; border:1px solid var(--line); padding:6px 8px;
+font-size:11px; text-align:left; background:var(--bg); cursor:pointer; line-height:1.4;
+font-family:'Poppins',sans-serif;
+}
+.cal-slot.free{color:var(--charcoal-soft);}
+.cal-slot.free:hover{background:var(--cream);}
+.cal-slot.booked{background:#F6F2EC; border-color:var(--taupe); color:var(--charcoal);}
+.cal-slot .cal-service{color:var(--taupe-dark); font-size:10px; display:block;}
+.cal-add{color:var(--taupe-dark);}
+.filters{display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;}
+.filters button{
+padding:8px 18px; border-radius:999px; border:1px solid var(--line);
+background:var(--bg); font-size:12px; cursor:pointer; color:var(--charcoal-soft);
+}
+.filters button.active{background:var(--charcoal); color:var(--bg); border-color:var(--charcoal);}
+.appt-card{
+background:var(--bg); border:1px solid var(--line); border-radius:10px;
+padding:16px 20px; margin-bottom:12px;
+display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+}
+.appt-date{min-width:120px; font-weight:500; font-size:14px;}
+.appt-service{flex:1; min-width:160px; color:var(--charcoal-soft); font-size:14px;}
+.appt-client{min-width:180px; font-size:13px;}
+.appt-client a{color:var(--taupe-dark); text-decoration:none;}
+.appt-status{
+font-size:11px; text-transform:uppercase; letter-spacing:0.06em;
+padding:4px 10px; border-radius:999px;
+}
+.appt-status.confirmed{background:#E1F0E6; color:#2D6A46;}
+.appt-status.cancelled{background:#F3E4E1; color:#A34A3A; text-decoration:line-through;}
+.appt-card button{
+padding:7px 14px; border-radius:999px; border:1px solid var(--line);
+background:var(--bg); font-size:12px; cursor:pointer;
+}
+#emptyState{color:var(--charcoal-soft); font-size:14px; padding:20px 0;}
+.modal-overlay{
+position:fixed; inset:0; background:rgba(41,36,32,0.55);
+display:none; align-items:center; justify-content:center; z-index:2000; padding:20px;
+}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--bg); border-radius:12px; padding:28px; max-width:380px; width:100%;}
+.modal-box h3{font-size:22px; margin-bottom:6px;}
+.modal-box p{font-size:13px; color:var(--charcoal-soft); margin-bottom:16px;}
+.modal-box label{font-size:12px; display:block; margin-bottom:6px; color:var(--charcoal-soft);}
+.modal-box select, .modal-box input{
+width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
+margin-bottom:14px; font-family:'Poppins',sans-serif; font-size:14px;
+}
+#manualError{color:#A34A3A; font-size:13px; margin-bottom:10px; display:none;}
+.modal-actions{display:flex; gap:10px; justify-content:flex-end;}
+.modal-actions button{padding:10px 20px; border-radius:999px; font-size:12px; cursor:pointer;}
+#manualCancelBtn{background:var(--bg); border:1px solid var(--line); color:var(--charcoal);}
+#manualConfirmBtn{background:var(--charcoal); color:var(--bg); border:none;}
+@media (max-width:700px){
+.cal-grid{grid-template-columns:repeat(7, 130px);}
+}
 </style>
 </head>
 <body>
-
 <div class="topbar">
-  <span class="logo">ELUNEYA — agenda</span>
-  <button id="logoutBtn" style="display:none;">Uitloggen</button>
+<span class="logo">ELUNEYA — agenda</span>
+<button id="logoutBtn" style="display:none;">Uitloggen</button>
 </div>
-
 <main>
-  <div id="loginView">
-    <h1>Inloggen</h1>
-    <input type="email" id="loginEmail" placeholder="E-mailadres">
-    <input type="password" id="loginPassword" placeholder="Wachtwoord">
-    <button id="loginBtn">Inloggen</button>
-    <p id="loginError">Ongeldige inloggegevens.</p>
-  </div>
-
-  <div id="agendaView">
-    <h2 style="margin-bottom:24px;">Aankomende afspraken</h2>
-    <div class="filters">
-      <button class="filter-btn active" data-filter="upcoming">Aankomend</button>
-      <button class="filter-btn" data-filter="all">Alles</button>
-      <button class="filter-btn" data-filter="cancelled">Geannuleerd</button>
-    </div>
-    <div id="apptList"></div>
-    <p id="emptyState" style="display:none;">Geen afspraken gevonden.</p>
-  </div>
+<div id="loginView">
+<h1>Inloggen</h1>
+<input type="email" id="loginEmail" placeholder="E-mailadres">
+<input type="password" id="loginPassword" placeholder="Wachtwoord">
+<button id="loginBtn">Inloggen</button>
+<p id="loginError">Ongeldige inloggegevens.</p>
+</div>
+<div id="agendaView">
+<div class="calendar-section">
+<h2 style="margin-bottom:16px;">Kalender</h2>
+<div class="week-nav">
+<button id="calPrevWeek">‹</button>
+<span id="calWeekLabel"></span>
+<button id="calNextWeek">›</button>
+</div>
+<div id="calGrid" class="cal-grid"></div>
+</div>
+<h2 style="margin-bottom:24px;">Aankomende afspraken</h2>
+<div class="filters">
+<button class="filter-btn active" data-filter="upcoming">Aankomend</button>
+<button class="filter-btn" data-filter="all">Alles</button>
+<button class="filter-btn" data-filter="cancelled">Geannuleerd</button>
+</div>
+<div id="apptList"></div>
+<p id="emptyState" style="display:none;">Geen afspraken gevonden.</p>
+</div>
 </main>
-
+<div id="manualBookingModal" class="modal-overlay">
+<div class="modal-box">
+<h3>Nieuwe afspraak</h3>
+<p id="manualBookingDateTime"></p>
+<label>Behandeling</label>
+<select id="manualService"></select>
+<label>Naam klant</label>
+<input id="manualName" type="text" placeholder="Naam">
+<label>Telefoon (optioneel)</label>
+<input id="manualPhone" type="text" placeholder="Telefoon">
+<label>E-mail (optioneel)</label>
+<input id="manualEmail" type="email" placeholder="E-mail">
+<p id="manualError"></p>
+<div class="modal-actions">
+<button id="manualCancelBtn">Annuleren</button>
+<button id="manualConfirmBtn">Boeken</button>
+</div>
+</div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // Zelfde Supabase-project als index.html
-  const SUPABASE_URL = 'https://jdfcheqimbxffxldedey.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_CgzLJMXvMZmC_x7K7wEj5w_tX7SVtNI';
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  const loginView = document.getElementById('loginView');
-  const agendaView = document.getElementById('agendaView');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const apptList = document.getElementById('apptList');
-  const emptyState = document.getElementById('emptyState');
-  let currentFilter = 'upcoming';
-  let allAppointments = [];
-
-  document.getElementById('loginBtn').addEventListener('click', async () => {
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if(error){
-      document.getElementById('loginError').style.display = 'block';
-    } else {
-      showAgenda();
-    }
-  });
-
-  logoutBtn.addEventListener('click', async () => {
-    await supabaseClient.auth.signOut();
-    location.reload();
-  });
-
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentFilter = btn.dataset.filter;
-      renderList();
-    });
-  });
-
-  async function showAgenda(){
-    loginView.style.display = 'none';
-    agendaView.style.display = 'block';
-    logoutBtn.style.display = 'inline-block';
-    await loadAppointments();
-  }
-
-  async function loadAppointments(){
-    const { data, error } = await supabaseClient
-      .from('appointments')
-      .select('*')
-      .order('appointment_date', { ascending: true })
-      .order('appointment_time', { ascending: true });
-    if(error){ console.error(error); return; }
-    allAppointments = data || [];
-    renderList();
-  }
-
-  function renderList(){
-    const today = new Date().toISOString().slice(0,10);
-    let filtered = allAppointments;
-    if(currentFilter === 'upcoming'){
-      filtered = allAppointments.filter(a => a.status === 'confirmed' && a.appointment_date >= today);
-    } else if(currentFilter === 'cancelled'){
-      filtered = allAppointments.filter(a => a.status === 'cancelled');
-    }
-
-    apptList.innerHTML = '';
-    emptyState.style.display = filtered.length ? 'none' : 'block';
-
-    filtered.forEach(a => {
-      const card = document.createElement('div');
-      card.className = 'appt-card';
-      const dateObj = new Date(a.appointment_date + 'T' + a.appointment_time);
-      const dateStr = dateObj.toLocaleDateString('nl-BE', { weekday:'short', day:'numeric', month:'short' });
-      const timeStr = a.appointment_time.slice(0,5);
-
-      card.innerHTML = `
-        <div class="appt-date">${dateStr}<br><span style="color:var(--charcoal-soft);font-size:13px;">${timeStr}</span></div>
-        <div class="appt-service">${a.service_name}</div>
-        <div class="appt-client">
-          ${a.client_name}<br>
-          <a href="mailto:${a.client_email}">${a.client_email}</a>
-          ${a.client_phone ? '<br>' + a.client_phone : ''}
-        </div>
-        <span class="appt-status ${a.status}">${a.status === 'confirmed' ? 'bevestigd' : 'geannuleerd'}</span>
-      `;
-
-      if(a.status === 'confirmed'){
-        const cancelBtn = document.createElement('button');
-        cancelBtn.textContent = 'Annuleren';
-        cancelBtn.addEventListener('click', () => cancelAppointment(a.id));
-        card.appendChild(cancelBtn);
-      }
-
-      apptList.appendChild(card);
-    });
-  }
-
-  async function cancelAppointment(id){
-    const { error } = await supabaseClient
-      .from('appointments')
-      .update({ status: 'cancelled' })
-      .eq('id', id);
-    if(error){ console.error(error); return; }
-    await loadAppointments();
-  }
-
-  // Check of er al een ingelogde sessie is
-  supabaseClient.auth.getSession().then(({ data }) => {
-    if(data.session){ showAgenda(); }
-  });
+const SUPABASE_URL = 'https://jdfcheqimbxffxldedey.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_CgzLJMXvMZmC_x7K7wEj5w_tX7SVtNI';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const loginView = document.getElementById('loginView');
+const agendaView = document.getElementById('agendaView');
+const logoutBtn = document.getElementById('logoutBtn');
+const apptList = document.getElementById('apptList');
+const emptyState = document.getElementById('emptyState');
+let currentFilter = 'upcoming';
+let allAppointments = [];
+let servicesList = [];
+let calWeekOffset = 0;
+let pendingSlot = null;
+const openingHours = {
+  1: { open: '18:30', close: '20:30' },
+  3: { open: '13:00', close: '21:00' },
+  5: { open: '18:30', close: '20:30' },
+  6: { open: '15:30', close: '20:30' }
+};
+document.getElementById('loginBtn').addEventListener('click', async () => {
+const email = document.getElementById('loginEmail').value.trim();
+const password = document.getElementById('loginPassword').value;
+const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+if(error){
+document.getElementById('loginError').style.display = 'block';
+} else {
+showAgenda();
+}
+});
+logoutBtn.addEventListener('click', async () => {
+await supabaseClient.auth.signOut();
+location.reload();
+});
+document.querySelectorAll('.filter-btn').forEach(btn => {
+btn.addEventListener('click', () => {
+document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+btn.classList.add('active');
+currentFilter = btn.dataset.filter;
+renderList();
+});
+});
+async function showAgenda(){
+loginView.style.display = 'none';
+agendaView.style.display = 'block';
+logoutBtn.style.display = 'inline-block';
+await loadServices();
+await loadAppointments();
+}
+async function loadServices(){
+const { data, error } = await supabaseClient
+.from('services')
+.select('*')
+.eq('active', true)
+.order('name');
+if(error){ console.error(error); return; }
+servicesList = data || [];
+}
+async function loadAppointments(){
+const { data, error } = await supabaseClient
+.from('appointments')
+.select('*')
+.order('appointment_date', { ascending: true })
+.order('appointment_time', { ascending: true });
+if(error){ console.error(error); return; }
+allAppointments = data || [];
+renderList();
+renderCalendar();
+}
+function renderList(){
+const today = new Date().toISOString().slice(0,10);
+let filtered = allAppointments;
+if(currentFilter === 'upcoming'){
+filtered = allAppointments.filter(a => a.status === 'confirmed' && a.appointment_date >= today);
+} else if(currentFilter === 'cancelled'){
+filtered = allAppointments.filter(a => a.status === 'cancelled');
+}
+apptList.innerHTML = '';
+emptyState.style.display = filtered.length ? 'none' : 'block';
+filtered.forEach(a => {
+const card = document.createElement('div');
+card.className = 'appt-card';
+const dateObj = new Date(a.appointment_date + 'T' + a.appointment_time);
+const dateStr = dateObj.toLocaleDateString('nl-BE', { weekday:'short', day:'numeric', month:'short' });
+const timeStr = a.appointment_time.slice(0,5);
+card.innerHTML = `<div class="appt-date">${dateStr}<br><span style="color:var(--charcoal-soft);font-size:13px;">${timeStr}</span></div><div class="appt-service">${a.service_name}</div><div class="appt-client">${a.client_name}<br>${a.client_email ? '<a href="mailto:' + a.client_email + '">' + a.client_email + '</a>' : ''}${a.client_phone ? '<br>' + a.client_phone : ''}</div><span class="appt-status ${a.status}">${a.status === 'confirmed' ? 'bevestigd' : 'geannuleerd'}</span>`;
+if(a.status === 'confirmed'){
+const cancelBtn = document.createElement('button');
+cancelBtn.textContent = 'Annuleren';
+cancelBtn.addEventListener('click', () => cancelAppointment(a.id));
+card.appendChild(cancelBtn);
+}
+apptList.appendChild(card);
+});
+}
+async function cancelAppointment(id){
+const { error } = await supabaseClient
+.from('appointments')
+.update({ status: 'cancelled' })
+.eq('id', id);
+if(error){ console.error(error); return; }
+await loadAppointments();
+}
+function toMinutes(hhmm){
+const parts = hhmm.split(':').map(Number);
+return parts[0]*60 + parts[1];
+}
+function toHHMM(mins){
+const h = Math.floor(mins/60).toString().padStart(2,'0');
+const m = (mins%60).toString().padStart(2,'0');
+return h + ':' + m;
+}
+function slotsForDay(dow){
+const hours = openingHours[dow];
+if(!hours) return [];
+const start = toMinutes(hours.open);
+const end = toMinutes(hours.close);
+const result = [];
+for(let t = start; t <= end - 30; t += 30){
+result.push(toHHMM(t));
+}
+return result;
+}
+function startOfWeek(offset){
+const d = new Date();
+const day = (d.getDay() + 6) % 7;
+d.setDate(d.getDate() - day + offset*7);
+d.setHours(0,0,0,0);
+return d;
+}
+function renderCalendar(){
+const start = startOfWeek(calWeekOffset);
+const end = new Date(start); end.setDate(end.getDate()+6);
+const fmt = (d) => d.toLocaleDateString('nl-BE', { day:'numeric', month:'short' });
+document.getElementById('calWeekLabel').textContent = fmt(start) + ' – ' + fmt(end);
+const grid = document.getElementById('calGrid');
+grid.innerHTML = '';
+for(let i=0;i<7;i++){
+const d = new Date(start); d.setDate(d.getDate()+i);
+const dow = d.getDay();
+const slots = slotsForDay(dow);
+const dateIso = d.toISOString().slice(0,10);
+const col = document.createElement('div');
+col.className = 'cal-day';
+const header = document.createElement('div');
+header.className = 'cal-day-header';
+header.textContent = d.toLocaleDateString('nl-BE', { weekday:'short', day:'numeric', month:'short' });
+col.appendChild(header);
+if(slots.length === 0){
+const closed = document.createElement('p');
+closed.className = 'cal-closed';
+closed.textContent = 'Gesloten';
+col.appendChild(closed);
+} else {
+slots.forEach(time => {
+const appt = allAppointments.find(a => a.status === 'confirmed' && a.appointment_date === dateIso && a.appointment_time.slice(0,5) === time);
+const slotEl = document.createElement('button');
+slotEl.type = 'button';
+slotEl.className = 'cal-slot ' + (appt ? 'booked' : 'free');
+if(appt){
+slotEl.innerHTML = '<strong>' + time + '</strong><span class="cal-service">' + appt.client_name + '</span><span class="cal-service">' + appt.service_name + '</span>';
+slotEl.addEventListener('click', () => showApptDetail(appt));
+} else {
+slotEl.innerHTML = '<strong>' + time + '</strong><span class="cal-add">+ Boeken</span>';
+slotEl.addEventListener('click', () => openManualBooking(dateIso, time, d));
+}
+col.appendChild(slotEl);
+});
+}
+grid.appendChild(col);
+}
+}
+document.getElementById('calPrevWeek').addEventListener('click', () => { calWeekOffset--; renderCalendar(); });
+document.getElementById('calNextWeek').addEventListener('click', () => { calWeekOffset++; renderCalendar(); });
+function openManualBooking(dateIso, time, dateObj){
+pendingSlot = { dateIso: dateIso, time: time };
+const dateStr = dateObj.toLocaleDateString('nl-BE', { weekday:'long', day:'numeric', month:'long' });
+document.getElementById('manualBookingDateTime').textContent = dateStr + ' om ' + time;
+const sel = document.getElementById('manualService');
+sel.innerHTML = '';
+servicesList.forEach(s => {
+const opt = document.createElement('option');
+opt.value = s.name;
+opt.textContent = s.name + ' — € ' + Number(s.price).toFixed(2);
+sel.appendChild(opt);
+});
+document.getElementById('manualName').value = '';
+document.getElementById('manualPhone').value = '';
+document.getElementById('manualEmail').value = '';
+const errEl = document.getElementById('manualError');
+errEl.style.display = 'none';
+errEl.textContent = '';
+document.getElementById('manualBookingModal').classList.add('open');
+}
+document.getElementById('manualCancelBtn').addEventListener('click', () => {
+document.getElementById('manualBookingModal').classList.remove('open');
+});
+document.getElementById('manualBookingModal').addEventListener('click', (e) => {
+if(e.target.id === 'manualBookingModal'){
+document.getElementById('manualBookingModal').classList.remove('open');
+}
+});
+document.getElementById('manualConfirmBtn').addEventListener('click', async () => {
+const name = document.getElementById('manualName').value.trim();
+const phone = document.getElementById('manualPhone').value.trim();
+const email = document.getElementById('manualEmail').value.trim();
+const service = document.getElementById('manualService').value;
+const errEl = document.getElementById('manualError');
+if(!name){
+errEl.textContent = 'Vul een naam in.';
+errEl.style.display = 'block';
+return;
+}
+if(!service){
+errEl.textContent = 'Kies een behandeling.';
+errEl.style.display = 'block';
+return;
+}
+const confirmBtn = document.getElementById('manualConfirmBtn');
+confirmBtn.disabled = true;
+confirmBtn.textContent = 'Bezig...';
+const result = await supabaseClient.from('appointments').insert({
+service_name: service,
+appointment_date: pendingSlot.dateIso,
+appointment_time: pendingSlot.time + ':00',
+client_name: name,
+client_email: email,
+client_phone: phone || null
+});
+const error = result.error;
+confirmBtn.disabled = false;
+confirmBtn.textContent = 'Boeken';
+if(error){
+if(error.code === '23505'){
+errEl.textContent = 'Dit tijdstip is ondertussen al bezet. Kies een ander moment.';
+} else {
+errEl.textContent = 'Er ging iets mis. Probeer opnieuw.';
+console.error(error);
+}
+errEl.style.display = 'block';
+return;
+}
+document.getElementById('manualBookingModal').classList.remove('open');
+await loadAppointments();
+});
+function showApptDetail(appt){
+var details = appt.client_name + ' — ' + appt.service_name;
+if(appt.client_email){ details += '\n' + appt.client_email; }
+if(appt.client_phone){ details += '\n' + appt.client_phone; }
+details += '\n\nDeze afspraak annuleren?';
+var doCancel = confirm(details);
+if(doCancel){ cancelAppointment(appt.id); }
+}
+supabaseClient.auth.getSession().then((result) => {
+if(result.data.session){ showAgenda(); }
+});
 </script>
-
 </body>
 </html>
