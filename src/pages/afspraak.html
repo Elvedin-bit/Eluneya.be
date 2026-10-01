@@ -1,0 +1,124 @@
+<!--meta {
+  "title": "Maak een afspraak — Eluneya Wevelgem",
+  "description": "Boek online je massage, facial of gratis intakegesprek bij Eluneya in Wevelgem. Kies je behandeling, dag en uur; je ziet meteen welke momenten vrij zijn.",
+  "breadcrumb": "Maak afspraak",
+  "booking": true
+} -->
+<main id="inhoud">
+  <section class="page-hero" aria-labelledby="page-title" style="padding-bottom:clamp(40px,6vw,64px)">
+    <div class="container">
+      <p class="eyebrow">Online agenda</p>
+      <h1 class="h-display" id="page-title">Maak een afspraak</h1>
+      <p class="lead">Kies je behandeling, een dag en een uur. Je ziet meteen welke momenten nog vrij zijn.</p>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:clamp(40px,6vw,64px)" aria-label="Afspraak boeken">
+    <div class="container booking-layout">
+
+      <div>
+        <noscript>
+          <div class="booking-card">
+            <p>De online agenda heeft JavaScript nodig. Je kunt ook rechtstreeks een afspraak maken via <a class="text-link" href="{{WA_LINK}}">WhatsApp</a> of telefonisch op <a class="text-link" href="tel:{{PHONE_E164}}">{{PHONE}}</a>.</p>
+          </div>
+        </noscript>
+
+        <!-- Wordt getoond als de agenda (nog) niet gekoppeld is of niet bereikbaar is -->
+        <div class="booking-card" id="booking-unavailable" hidden>
+          <h2 class="h-sub" style="margin-bottom:12px">De online agenda is even niet beschikbaar</h2>
+          <p class="lead" style="margin-bottom:24px">Geen zorgen: je kunt je afspraak ook gewoon via een bericht of telefonisch vastleggen.</p>
+          <div class="btn-group">
+            <a class="btn btn-dark" href="{{WA_LINK}}" target="_blank" rel="noopener">{{ICON_WHATSAPP}}WhatsApp</a>
+            <a class="btn btn-outline" href="tel:{{PHONE_E164}}">{{ICON_PHONE}}{{PHONE}}</a>
+          </div>
+        </div>
+
+        <form class="booking-card" id="booking-form" novalidate hidden>
+          <fieldset class="booking-step">
+            <legend class="step-title"><span class="n">1</span> Behandeling</legend>
+            <div class="field">
+              <label for="service">Welke behandeling wil je boeken?</label>
+              <select class="select" id="service" name="service" required aria-describedby="service-summary">{{BOOKING_SELECT}}</select>
+              <p class="service-summary" id="service-summary" aria-live="polite"></p>
+            </div>
+            <label class="check" id="online-wrap" hidden>
+              <input type="checkbox" id="online" name="online">
+              <span>Ik wil het intakegesprek liever online doen</span>
+            </label>
+          </fieldset>
+
+          <fieldset class="booking-step">
+            <legend class="step-title"><span class="n">2</span> Dag</legend>
+            <div class="week-nav">
+              <button class="icon-btn" type="button" id="prev-week" aria-label="Vorige week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <span id="week-label" aria-live="polite"></span>
+              <button class="icon-btn" type="button" id="next-week" aria-label="Volgende week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+            </div>
+            <div class="day-row" id="day-row" role="group" aria-label="Kies een dag"></div>
+          </fieldset>
+
+          <fieldset class="booking-step">
+            <legend class="step-title"><span class="n">3</span> Uur</legend>
+            <div class="slot-row" id="slot-row" role="group" aria-label="Kies een uur" aria-live="polite"></div>
+          </fieldset>
+
+          <fieldset class="booking-step">
+            <legend class="step-title"><span class="n">4</span> Jouw gegevens</legend>
+            <div class="form-row">
+              <div class="field">
+                <label for="name">Naam *</label>
+                <input class="input" id="name" name="name" type="text" autocomplete="name" required maxlength="120">
+              </div>
+              <div class="field">
+                <label for="email">E-mailadres *</label>
+                <input class="input" id="email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength="200">
+              </div>
+            </div>
+            <div class="field">
+              <label for="phone">Telefoon <span class="hint">(optioneel, handig als er iets verandert)</span></label>
+              <input class="input" id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="40">
+            </div>
+            <div class="field">
+              <label for="notes">Opmerking <span class="hint">(optioneel)</span></label>
+              <textarea class="textarea" id="notes" name="notes" maxlength="800" aria-describedby="notes-hint"></textarea>
+              <p class="hint" id="notes-hint">Deel hier liever geen medische gegevens; die bespreken we persoonlijk tijdens je afspraak.</p>
+            </div>
+            <!-- Honeypot tegen spambots: onzichtbaar voor bezoekers, wordt niet verstuurd -->
+            <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
+              <label for="website">Laat dit veld leeg</label>
+              <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+            </div>
+          </fieldset>
+
+          <div class="booking-summary" id="booking-summary" aria-live="polite">Kies een behandeling, dag en uur.</div>
+          <p class="form-message" id="form-message" role="alert" hidden></p>
+          <button class="btn btn-dark" type="submit" id="submit-btn">Bevestig afspraak</button>
+          <p class="fineprint">Je gegevens worden enkel gebruikt om je afspraak in te plannen en op te volgen. Lees de <a class="text-link" href="{BASE}privacy.html">privacyverklaring</a> en de <a class="text-link" href="{BASE}voorwaarden.html">voorwaarden</a>.</p>
+        </form>
+
+        <div class="booking-card booking-done" id="booking-done" hidden tabindex="-1" aria-labelledby="done-title">
+          <div class="check-icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+          <h2 id="done-title">Je afspraak staat ingepland</h2>
+          <p id="done-details"></p>
+          <p>Wil je iets wijzigen? Stuur dan een bericht via WhatsApp.</p>
+          <div class="btn-group">
+            <a class="btn btn-dark" id="ics-link" href="#" download="eluneya-afspraak.ics">Zet in je agenda</a>
+            <a class="btn btn-outline" href="{BASE}index.html">Terug naar home</a>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side-note" aria-labelledby="side-title">
+        <h2 id="side-title">Goed om te weten</h2>
+        <div class="info-block" style="margin-bottom:28px">
+          <h3>Openingsuren</h3>
+          {{HOURS_LIST}}
+        </div>
+        <p>Twijfel je welke behandeling bij je past? Kies dan het <a class="text-link" href="?behandeling=intakegesprek">gratis intakegesprek</a>; dat kan ook online.</p>
+        <p>Online boeken kan tot {{MIN_NOTICE}} uur op voorhand. Voor een moment op korte termijn stuur je best een <a class="text-link" href="{{WA_LINK}}" target="_blank" rel="noopener">WhatsApp-bericht</a>.</p>
+        <p>Adres: {{STREET}}, {{POSTAL}} {{CITY}}</p>
+      </aside>
+
+    </div>
+  </section>
+</main>

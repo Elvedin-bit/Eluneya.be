@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="nl-BE">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Agenda beheren — Eluneya</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    body { background: var(--cream); min-height: 100vh; }
+    .topbar { background: var(--charcoal); color: var(--white); }
+    .topbar .container { display: flex; align-items: center; justify-content: space-between; min-height: 64px; gap: 16px; }
+    .topbar .logo { font-size: 18px; }
+    .topbar small { opacity: .7; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; margin-left: 12px; }
+    .wrap { padding-block: 40px 80px; }
+    .panel { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: clamp(20px, 3vw, 32px); margin-bottom: 24px; }
+    .panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+    .panel-head h2 { font-size: 1.8rem; }
+    .login { max-width: 420px; margin: 8vh auto; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tab { min-height: 40px; padding: 8px 18px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; }
+    .tab[aria-pressed="true"] { background: var(--charcoal); color: var(--white); border-color: var(--charcoal); }
+    .btn-sm { min-height: 40px; padding: 10px 20px; }
+    .week { display: grid; grid-template-columns: repeat(7, minmax(150px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+    .day { border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-height: 140px; background: var(--white); }
+    .day.closed { background: repeating-linear-gradient(45deg, var(--cream), var(--cream) 6px, var(--white) 6px, var(--white) 12px); }
+    .day.today { border-color: var(--taupe-dark); }
+    .day h3 { font-family: var(--sans); font-size: 12px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .day .hrs { font-size: 11px; color: var(--text-soft); margin-bottom: 8px; }
+    .appt { display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 8px; background: var(--sand); margin-bottom: 6px; font-size: 13px; line-height: 1.35; }
+    .appt:hover { background: var(--taupe-light); }
+    .appt strong { display: block; font-variant-numeric: tabular-nums; }
+    .appt.cancelled { opacity: .5; text-decoration: line-through; }
+    .closed-tag { font-size: 12px; color: var(--error); }
+    .list { border-top: 1px solid var(--line); }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; padding: 14px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+    .row:hover { background: var(--cream); }
+    .row .when { font-variant-numeric: tabular-nums; font-weight: 400; }
+    .row .who { color: var(--text-soft); font-size: 14px; }
+    .badge { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; background: var(--cream); align-self: start; }
+    .badge.cancelled { color: var(--error); }
+    .empty { color: var(--text-soft); padding: 16px 0; }
+    dialog { border: 0; border-radius: var(--radius-lg); padding: 0; width: min(520px, calc(100vw - 32px)); box-shadow: 0 30px 70px -20px rgba(41,36,32,.35); }
+    dialog::backdrop { background: rgba(41, 36, 32, .5); }
+    .dlg-head { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--line); }
+    .dlg-head h2 { font-size: 1.6rem; }
+    .dlg-body { padding: 24px; }
+    .dlg-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .details dt { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--taupe-text); margin-top: 12px; }
+    .details dd { margin: 2px 0 0; }
+    .closures li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .grid-2 { display: grid; gap: 0 14px; }
+    @media (min-width: 600px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+    .btn-danger { background: var(--error); color: var(--white); }
+    .btn-danger:hover { background: #7d3326; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container">
+      <span class="logo">ELUNEYA<small>Agenda</small></span>
+      <button class="btn btn-outline-light btn-sm" id="logout" type="button" hidden>Uitloggen</button>
+    </div>
+  </header>
+
+  <main class="container wrap" id="inhoud">
+    <noscript><p class="panel">Deze beheerpagina heeft JavaScript nodig.</p></noscript>
+
+    <!-- Inloggen -->
+    <form class="panel login" id="login-view" hidden novalidate>
+      <h1 class="h-sub" style="margin-bottom:20px">Inloggen</h1>
+      <div class="field"><label for="login-email">E-mailadres</label><input class="input" id="login-email" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="login-pass">Wachtwoord</label><input class="input" id="login-pass" type="password" autocomplete="current-password" required></div>
+      <p class="form-message is-error" id="login-msg" role="alert" hidden></p>
+      <button class="btn btn-dark" type="submit" style="width:100%">Inloggen</button>
+    </form>
+
+    <!-- Geen toegang / niet ingesteld -->
+    <div class="panel login" id="info-view" hidden>
+      <h1 class="h-sub" style="margin-bottom:12px" id="info-title"></h1>
+      <p class="lead" id="info-text"></p>
+    </div>
+
+    <!-- Agenda -->
+    <div id="app-view" hidden>
+      <section class="panel" aria-labelledby="week-title">
+        <div class="panel-head">
+          <h2 id="week-title">Week</h2>
+          <div class="tabs">
+            <button class="icon-btn" type="button" id="prev" aria-label="Vorige week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+            <button class="tab" type="button" id="this-week">Deze week</button>
+            <button class="icon-btn" type="button" id="next" aria-label="Volgende week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+            <button class="btn btn-dark btn-sm" type="button" id="new-btn">+ Nieuwe afspraak</button>
+          </div>
+        </div>
+        <div class="week" id="week" aria-live="polite"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="list-title">
+        <div class="panel-head">
+          <h2 id="list-title">Afspraken</h2>
+          <div class="tabs" role="group" aria-label="Filter">
+            <button class="tab" type="button" data-filter="upcoming" aria-pressed="true">Aankomend</button>
+            <button class="tab" type="button" data-filter="past" aria-pressed="false">Voorbij</button>
+            <button class="tab" type="button" data-filter="cancelled" aria-pressed="false">Geannuleerd</button>
+          </div>
+        </div>
+        <div class="list" id="list"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="closed-title">
+        <div class="panel-head"><h2 id="closed-title">Vrije dagen &amp; vakantie</h2></div>
+        <p class="lead" style="margin-bottom:16px">Op deze dagen kan niemand online boeken.</p>
+        <ul class="closures" id="closures"></ul>
+        <form id="closure-form" class="grid-2" style="margin-top:20px" novalidate>
+          <div class="field"><label for="c-from">Van</label><input class="input" id="c-from" type="date" required></div>
+          <div class="field"><label for="c-to">Tot en met</label><input class="input" id="c-to" type="date" required></div>
+          <div class="field" style="grid-column:1/-1"><label for="c-reason">Reden <span class="hint">(optioneel, enkel voor jou)</span></label><input class="input" id="c-reason" type="text" maxlength="120"></div>
+          <p class="form-message is-error" id="c-msg" role="alert" hidden style="grid-column:1/-1"></p>
+          <div><button class="btn btn-outline btn-sm" type="submit">Dagen blokkeren</button></div>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <!-- Detail -->
+  <dialog id="detail" aria-labelledby="d-title">
+    <div class="dlg-head"><h2 id="d-title">Afspraak</h2><button class="icon-btn" type="button" data-close aria-label="Sluiten">✕</button></div>
+    <div class="dlg-body">
+      <dl class="details" id="d-info"></dl>
+      <p class="form-message is-error" id="d-msg" role="alert" hidden></p>
+      <div class="dlg-actions">
+        <a class="btn btn-outline btn-sm" id="d-wa" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="btn btn-outline btn-sm" id="d-mail">E-mail</a>
+        <button class="btn btn-danger btn-sm" type="button" id="d-cancel">Annuleren</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Nieuwe afspraak -->
+  <dialog id="new" aria-labelledby="n-title">
+    <form id="new-form" novalidate>
+      <div class="dlg-head"><h2 id="n-title">Nieuwe afspraak</h2><button class="icon-btn" type="button" data-close aria-label="Sluiten">✕</button></div>
+      <div class="dlg-body">
+        <div class="field"><label for="n-service">Behandeling</label><select class="select" id="n-service" required></select></div>
+        <div class="grid-2">
+          <div class="field"><label for="n-date">Datum</label><input class="input" id="n-date" type="date" required></div>
+          <div class="field"><label for="n-time">Uur</label><input class="input" id="n-time" type="time" step="300" required></div>
+        </div>
+        <div class="field"><label for="n-name">Naam klant</label><input class="input" id="n-name" type="text" maxlength="120" required></div>
+        <div class="grid-2">
+          <div class="field"><label for="n-phone">Telefoon <span class="hint">(optioneel)</span></label><input class="input" id="n-phone" type="tel" maxlength="40"></div>
+          <div class="field"><label for="n-email">E-mail <span class="hint">(optioneel)</span></label><input class="input" id="n-email" type="email" maxlength="200"></div>
+        </div>
+        <div class="field"><label for="n-notes">Notitie <span class="hint">(optioneel)</span></label><textarea class="textarea" id="n-notes" maxlength="1000"></textarea></div>
+        <p class="form-message is-error" id="n-msg" role="alert" hidden></p>
+        <div class="dlg-actions"><button class="btn btn-outline btn-sm" type="button" data-close>Annuleren</button><button class="btn btn-dark btn-sm" type="submit" id="n-submit">Afspraak opslaan</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/services.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+  (function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+    var CFG = window.ELUNEYA_CONFIG || {}, DATA = window.ELUNEYA_DATA;
+    var views = { login: $('login-view'), info: $('info-view'), app: $('app-view') };
+    function show(name) { Object.keys(views).forEach(function (k) { views[k].hidden = k !== name; }); $('logout').hidden = name !== 'app'; }
+    function info(title, text) { $('info-title').textContent = title; $('info-text').textContent = text; show('info'); }
+
+    if (!window.supabase || !CFG.supabaseUrl || !CFG.supabaseKey || !DATA) {
+      info('Agenda niet beschikbaar', 'De verbinding met de database is niet ingesteld (assets/js/config.js) of kon niet geladen worden.');
+      return;
+    }
+    var db = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey);
+    var TREAT = {}; DATA.services.forEach(function (s) { TREAT[s.slug] = s; });
+    var HOURS = DATA.openingHours, BUFFER = DATA.rules.bufferMinutes;
+    var DAYS = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
+    var state = { offset: 0, filter: 'upcoming', current: null };
+
+    /* ---- hulp ---- */
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+    function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+    function weekStart(o) { var t = new Date(); t.setHours(0, 0, 0, 0); t.setDate(t.getDate() - ((t.getDay() + 6) % 7) + o * 7); return t; }
+    function parse(s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+    function hm(t) { return String(t).slice(0, 5); }
+    function addMin(t, m) { var p = t.split(':'), x = (+p[0]) * 60 + (+p[1]) + m; return x >= 1440 ? '23:59:59' : pad(Math.floor(x / 60)) + ':' + pad(x % 60); }
+    function nice(d) { return parse(d).toLocaleDateString('nl-BE', { weekday: 'long', day: 'numeric', month: 'long' }); }
+    function el(tag, cls, text) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (text != null) { e.textContent = text; } return e; }
+    function msg(id, text) { var m = $(id); m.textContent = text || ''; m.hidden = !text; }
+    function today() { return ymd(new Date()); }
+
+    /* ---- inloggen ---- */
+    async function start() {
+      var res = await db.auth.getSession();
+      if (!res.data.session) { show('login'); return; }
+      var adm = await db.rpc('is_admin');
+      if (adm.error) { info('Database nog niet klaar', 'Voer eerst supabase/schema.sql uit in Supabase. (' + adm.error.message + ')'); $('logout').hidden = false; return; }
+      if (!adm.data) { info('Geen toegang', 'Dit account heeft geen beheerrechten. Voeg het toe aan de tabel admins (zie supabase/schema.sql).'); $('logout').hidden = false; return; }
+      show('app');
+      refresh();
+    }
+    $('login-view').addEventListener('submit', async function (e) {
+      e.preventDefault(); msg('login-msg');
+      var r = await db.auth.signInWithPassword({ email: $('login-email').value.trim(), password: $('login-pass').value });
+      if (r.error) { msg('login-msg', 'Inloggen mislukt: controleer je e-mailadres en wachtwoord.'); return; }
+      $('login-pass').value = '';
+      start();
+    });
+    $('logout').addEventListener('click', async function () { await db.auth.signOut(); show('login'); });
+
+    /* ---- gegevens ---- */
+    function refresh() { renderWeek(); renderList(); renderClosures(); }
+
+    async function renderWeek() {
+      var s = weekStart(state.offset), e = addDays(s, 6), box = $('week');
+      $('week-title').textContent = 'Week van ' + s.toLocaleDateString('nl-BE', { day: 'numeric', month: 'long' });
+      var q = await db.from('bookings').select('*').gte('booking_date', ymd(s)).lte('booking_date', ymd(e)).order('booking_date').order('start_time');
+      var c = await db.from('closures').select('*').lte('date_from', ymd(e)).gte('date_to', ymd(s));
+      if (q.error) { box.replaceChildren(el('p', 'empty', 'Kon de week niet laden: ' + q.error.message)); return; }
+      var frag = document.createDocumentFragment();
+      for (var i = 0; i < 7; i++) {
+        var d = addDays(s, i), key = ymd(d), h = HOURS[String(d.getDay())];
+        var closed = (c.data || []).some(function (x) { return key >= x.date_from && key <= x.date_to; });
+        var col = el('div', 'day' + (!h || closed ? ' closed' : '') + (key === today() ? ' today' : ''));
+        var head = el('h3'); head.append(el('span', null, DAYS[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1)));
+        col.append(head, el('p', 'hrs', closed ? 'Geblokkeerd' : h ? h[0] + ' – ' + h[1] : 'Gesloten'));
+        (q.data || []).filter(function (b) { return b.booking_date === key; }).forEach(function (b) {
+          var a = el('button', 'appt' + (b.status !== 'bevestigd' ? ' cancelled' : '')); a.type = 'button';
+          a.append(el('strong', null, hm(b.start_time) + ' – ' + hm(b.end_time)), document.createTextNode(b.client_name + ' · ' + b.service_name));
+          a.addEventListener('click', function () { openDetail(b); });
+          col.append(a);
+        });
+        frag.append(col);
+      }
+      box.replaceChildren(frag);
+    }
+
+    async function renderList() {
+      var q = db.from('bookings').select('*');
+      if (state.filter === 'upcoming') { q = q.eq('status', 'bevestigd').gte('booking_date', today()).order('booking_date').order('start_time').limit(100); }
+      else if (state.filter === 'past') { q = q.eq('status', 'bevestigd').lt('booking_date', today()).order('booking_date', { ascending: false }).limit(100); }
+      else { q = q.eq('status', 'geannuleerd').order('booking_date', { ascending: false }).limit(100); }
+      var r = await q, box = $('list');
+      if (r.error) { box.replaceChildren(el('p', 'empty', 'Kon de afspraken niet laden: ' + r.error.message)); return; }
+      if (!r.data.length) { box.replaceChildren(el('p', 'empty', 'Geen afspraken.')); return; }
+      var frag = document.createDocumentFragment();
+      r.data.forEach(function (b) {
+        var row = el('div', 'row'); row.tabIndex = 0; row.setAttribute('role', 'button');
+        var left = el('div');
+        left.append(el('div', 'when', nice(b.booking_date) + ' · ' + hm(b.start_time) + ' – ' + hm(b.end_time)), el('div', 'who', b.client_name + ' — ' + b.service_name));
+        row.append(left, el('span', 'badge' + (b.status !== 'bevestigd' ? ' cancelled' : ''), b.status));
+        row.addEventListener('click', function () { openDetail(b); });
+        row.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(b); } });
+        frag.append(row);
+      });
+      box.replaceChildren(frag);
+    }
+
+    async function renderClosures() {
+      var r = await db.from('closures').select('*').gte('date_to', today()).order('date_from'), box = $('closures');
+      if (r.error) { box.replaceChildren(el('li', 'empty', r.error.message)); return; }
+      if (!r.data.length) { box.replaceChildren(el('li', 'empty', 'Geen geblokkeerde dagen gepland.')); return; }
+      var frag = document.createDocumentFragment();
+      r.data.forEach(function (c) {
+        var li = el('li'), txt = nice(c.date_from) + (c.date_to !== c.date_from ? ' t/m ' + nice(c.date_to) : '') + (c.reason ? ' — ' + c.reason : '');
+        var del = el('button', 'btn btn-outline btn-sm', 'Verwijderen'); del.type = 'button';
+        del.addEventListener('click', async function () {
+          var d = await db.from('closures').delete().eq('id', c.id);
+          if (d.error) { msg('c-msg', d.error.message); } else { refresh(); }
+        });
+        li.append(el('span', null, txt), del); frag.append(li);
+      });
+      box.replaceChildren(frag);
+    }
+
+    /* ---- detail & annuleren ---- */
+    function openDetail(b) {
+      state.current = b; msg('d-msg');
+      var dl = $('d-info'); dl.replaceChildren();
+      [['Behandeling', b.service_name + ' (€ ' + Number(b.price_eur).toFixed(2).replace('.', ',') + ')'],
+       ['Wanneer', nice(b.booking_date) + ', ' + hm(b.start_time) + ' – ' + hm(b.end_time)],
+       ['Klant', b.client_name], ['Telefoon', b.client_phone || '—'], ['E-mail', b.client_email || '—'],
+       ['Opmerking', b.notes || '—'], ['Status', b.status], ['Geboekt op', new Date(b.created_at).toLocaleString('nl-BE')]]
+        .forEach(function (p) { dl.append(el('dt', null, p[0]), el('dd', null, p[1])); });
+      var phone = (b.client_phone || '').replace(/[^\d+]/g, '').replace(/^0/, '32').replace(/^\+/, '');
+      $('d-wa').hidden = !phone; $('d-wa').href = 'https://wa.me/' + phone;
+      $('d-mail').hidden = !b.client_email; $('d-mail').href = 'mailto:' + (b.client_email || '');
+      $('d-cancel').hidden = b.status !== 'bevestigd';
+      $('d-cancel').textContent = 'Annuleren'; $('d-cancel').dataset.confirm = '';
+      $('detail').showModal();
+    }
+    $('d-cancel').addEventListener('click', async function () {
+      var btn = this;
+      if (!btn.dataset.confirm) { btn.dataset.confirm = '1'; btn.textContent = 'Zeker? Klik opnieuw'; return; }
+      btn.disabled = true;
+      var r = await db.from('bookings').update({ status: 'geannuleerd' }).eq('id', state.current.id);
+      btn.disabled = false;
+      if (r.error) { msg('d-msg', 'Annuleren mislukt: ' + r.error.message); return; }
+      $('detail').close(); refresh();
+    });
+
+    /* ---- nieuwe afspraak ---- */
+    var sel = $('n-service');
+    DATA.services.forEach(function (s) { var o = el('option', null, s.name + ' (' + s.duration + ' min)'); o.value = s.slug; sel.append(o); });
+    $('new-btn').addEventListener('click', function () { $('new-form').reset(); msg('n-msg'); $('n-date').value = today(); $('new').showModal(); });
+    $('new-form').addEventListener('submit', async function (e) {
+      e.preventDefault(); msg('n-msg');
+      var t = TREAT[sel.value], date = $('n-date').value, time = $('n-time').value, name = $('n-name').value.trim(), mail = $('n-email').value.trim();
+      if (!t || !date || !time || name.length < 2) { msg('n-msg', 'Vul behandeling, datum, uur en naam in.'); return; }
+      if (mail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) { msg('n-msg', 'Het e-mailadres lijkt niet juist.'); return; }
+      var end = addMin(time, t.duration);
+      $('n-submit').disabled = true;
+      var r = await db.from('bookings').insert({
+        service_slug: t.slug, service_name: t.name, price_eur: t.price, booking_date: date,
+        start_time: time, end_time: end, blocked_until: addMin(end, BUFFER),
+        client_name: name, client_email: mail || null, client_phone: $('n-phone').value.trim() || null, notes: $('n-notes').value.trim() || null
+      });
+      $('n-submit').disabled = false;
+      if (r.error) { msg('n-msg', r.error.code === '23P01' ? 'Dit moment overlapt met een andere afspraak (inclusief ' + BUFFER + ' min tussenruimte).' : 'Opslaan mislukt: ' + r.error.message); return; }
+      $('new').close();
+      state.offset = Math.floor((parse(date) - weekStart(0)) / 604800000);
+      refresh();
+    });
+
+    /* ---- vrije dagen ---- */
+    $('closure-form').addEventListener('submit', async function (e) {
+      e.preventDefault(); msg('c-msg');
+      var f = $('c-from').value, t = $('c-to').value || f;
+      if (!f || t < f) { msg('c-msg', 'Kies een geldige periode.'); return; }
+      var r = await db.from('closures').insert({ date_from: f, date_to: t, reason: $('c-reason').value.trim() || null });
+      if (r.error) { msg('c-msg', r.error.message); return; }
+      this.reset(); refresh();
+    });
+
+    /* ---- navigatie ---- */
+    $('prev').addEventListener('click', function () { state.offset--; renderWeek(); });
+    $('next').addEventListener('click', function () { state.offset++; renderWeek(); });
+    $('this-week').addEventListener('click', function () { state.offset = 0; renderWeek(); });
+    document.querySelectorAll('[data-filter]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.filter = b.dataset.filter;
+        document.querySelectorAll('[data-filter]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        renderList();
+      });
+    });
+    document.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', function () { b.closest('dialog').close(); }); });
+
+    start();
+  })();
+  </script>
+</body>
+</html>

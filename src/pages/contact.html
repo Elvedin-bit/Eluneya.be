@@ -1,0 +1,44 @@
+<!--meta {
+  "title": "Contact & route — Eluneya, Jan Breydelstraat 1 Wevelgem",
+  "description": "Contacteer Eluneya in Wevelgem via WhatsApp, telefoon of e-mail. Jan Breydelstraat 1, 8560 Wevelgem. Openingsuren en route, enkel op afspraak.",
+  "breadcrumb": "Contact",
+  "ld_business": true
+} -->
+<main id="inhoud">
+  <section class="page-hero" aria-labelledby="page-title">
+    <div class="container">
+      <p class="eyebrow">Contact</p>
+      <h1 class="h-display" id="page-title">Fijn dat je er bent</h1>
+      <p class="lead">Ik werk op afspraak, naast mijn andere job. Daarom is een berichtje via WhatsApp de snelste manier om me te bereiken; ik antwoord zo snel als ik kan.</p>
+      <div class="btn-group" style="margin-top:32px">
+        <a class="btn btn-dark" href="{{WA_LINK}}" target="_blank" rel="noopener">{{ICON_WHATSAPP}}Stuur een WhatsApp</a>
+        <a class="btn btn-outline" href="{BASE}afspraak.html">Maak meteen een afspraak</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-label="Contactgegevens en openingsuren">
+    <div class="container">
+      <div class="info-grid">
+        <div class="info-block reveal">
+          <h2>Contact</h2>
+          {{CONTACT_LINES}}
+        </div>
+        <div class="info-block reveal d1">
+          <h2>Openingsuren</h2>
+          {{HOURS_LIST}}
+          <p style="margin-top:12px">Enkel op afspraak.</p>
+        </div>
+        <div class="info-block reveal d2">
+          <h2>Adres</h2>
+          <address>Eluneya<br>{{STREET}}<br>{{POSTAL}} {{CITY}}</address>
+          <!-- IN TE VULLEN (optioneel): parkeren, bel of ingang, toegankelijkheid. -->
+          <p style="margin-top:20px"><a class="arrow-link" href="https://www.google.com/maps/search/?api=1&amp;query=Jan+Breydelstraat+1+8560+Wevelgem" target="_blank" rel="noopener">Plan je route<span class="visually-hidden"> in Google Maps (nieuw venster)</span>{{ICON_ARROW}}</a></p>
+          <p style="margin-top:24px;font-size:.85rem">Ondernemings- en btw-nummer: {{VAT}}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {{CTA_BAND {"title": "Liever meteen een moment vastleggen?", "text": "In de online agenda zie je welke uren nog vrij zijn.", "second": false}}}
+</main>
