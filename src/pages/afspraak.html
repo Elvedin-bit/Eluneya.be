@@ -41,6 +41,16 @@
               <select class="select" id="service" name="service" required aria-describedby="service-summary">{{BOOKING_SELECT}}</select>
               <p class="service-summary" id="service-summary" aria-live="polite"></p>
             </div>
+            <!-- Promotiecode: de knop verschijnt pas als de promotiefuncties van de agenda bereikbaar zijn -->
+            <button class="text-link promo-toggle" type="button" id="promo-toggle" aria-expanded="false" aria-controls="promo-field" hidden>Heb je een promotiecode?</button>
+            <div class="field promo-field" id="promo-field" hidden>
+              <label for="promo-code">Promotiecode</label>
+              <div class="promo-row">
+                <input class="input" id="promo-code" name="promo" type="text" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="promo-status">
+                <button class="btn btn-outline" type="button" id="promo-apply">Toepassen</button>
+              </div>
+              <p class="promo-status" id="promo-status" aria-live="polite"></p>
+            </div>
             <label class="check" id="online-wrap" hidden>
               <input type="checkbox" id="online" name="online">
               <span>Ik wil het intakegesprek liever online doen</span>

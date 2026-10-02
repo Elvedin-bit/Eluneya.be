@@ -423,7 +423,10 @@ def head(meta, path):
   <link rel="preload" href="{{BASE}}assets/fonts/cormorant-garamond-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>{preload_img}
   <link rel="stylesheet" href="{{BASE}}assets/css/style.css">
   <script>document.documentElement.classList.add('js');</script>
-  <script src="{{BASE}}assets/js/main.js" defer></script>{meta.get('extra_head', '')}{ld}
+  <script src="{{BASE}}assets/js/main.js" defer></script>
+  <script src="{{BASE}}assets/js/config.js" defer></script>
+  <script src="{{BASE}}assets/js/services.js" defer></script>
+  <script src="{{BASE}}assets/js/promotions.js" defer></script>{meta.get('extra_head', '')}{ld}
 </head>"""
 
 
@@ -464,9 +467,7 @@ def build_pages():
             ld.append(breadcrumb_ld(meta["breadcrumb"], path))
         meta["_ld"] = ld
         if meta.get("booking"):
-            meta["extra_head"] = ('\n  <script src="{BASE}assets/js/config.js" defer></script>'
-                                  '\n  <script src="{BASE}assets/js/services.js" defer></script>'
-                                  '\n  <script src="{BASE}assets/js/booking.js" defer></script>')
+            meta["extra_head"] = '\n  <script src="{BASE}assets/js/booking.js" defer></script>'
 
         body = pic_re.sub(lambda mm: picture(mm.group(1), mm.group(2), mm.group(3), bool(mm.group(4))), body)
         body = cta_re.sub(lambda mm: cta_band(**json.loads(mm.group(1))), body)

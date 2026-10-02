@@ -41,7 +41,7 @@
     .badge { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; background: var(--cream); align-self: start; }
     .badge.cancelled { color: var(--error); }
     .empty { color: var(--text-soft); padding: 16px 0; }
-    dialog { border: 0; border-radius: var(--radius-lg); padding: 0; width: min(520px, calc(100vw - 32px)); box-shadow: 0 30px 70px -20px rgba(41,36,32,.35); }
+    dialog { margin: auto; max-height: calc(100dvh - 32px); overflow-y: auto; border: 0; border-radius: var(--radius-lg); padding: 0; width: min(520px, calc(100vw - 32px)); box-shadow: 0 30px 70px -20px rgba(41,36,32,.35); }
     dialog::backdrop { background: rgba(41, 36, 32, .5); }
     .dlg-head { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--line); }
     .dlg-head h2 { font-size: 1.6rem; }
@@ -52,6 +52,22 @@
     .closures li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
     .grid-2 { display: grid; gap: 0 14px; }
     @media (min-width: 600px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+    .view-tabs { margin-bottom: 24px; }
+    .prow { display: grid; gap: 12px 20px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+    @media (min-width: 760px) { .prow { grid-template-columns: 1fr auto; align-items: center; } }
+    .prow-main { display: flex; gap: 16px; align-items: flex-start; min-width: 0; }
+    .prow-thumb { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; background: var(--sand); flex: none; }
+    .prow-thumb.none { display: grid; place-items: center; color: var(--taupe); font-family: var(--serif); font-size: 1.6rem; }
+    .prow h3 { font-family: var(--serif); font-size: 1.35rem; font-weight: 500; margin: 0 0 2px; overflow-wrap: anywhere; }
+    .prow .meta { font-size: 13px; color: var(--text-soft); line-height: 1.6; }
+    .prow .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+    .prow .acts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .badge.on { background: rgba(79, 107, 82, .14); color: var(--success); }
+    .badge.soon { background: var(--sand); color: var(--taupe-dark); }
+    .badge.off { color: var(--text-soft); }
+    .badge.plain { background: transparent; border: 1px solid var(--line); color: var(--text-soft); }
+    .checks { display: grid; gap: 10px; margin: 4px 0 18px; }
+    .img-preview { width: 100%; max-height: 180px; object-fit: cover; border-radius: 10px; margin-bottom: 10px; background: var(--sand); }
     .btn-danger { background: var(--error); color: var(--white); }
     .btn-danger:hover { background: #7d3326; }
   </style>
@@ -84,6 +100,12 @@
 
     <!-- Agenda -->
     <div id="app-view" hidden>
+      <div class="tabs view-tabs" role="group" aria-label="Onderdeel">
+        <button class="tab" type="button" data-view="agenda" aria-pressed="true">Agenda</button>
+        <button class="tab" type="button" data-view="promos" aria-pressed="false">Promoties</button>
+      </div>
+
+      <div id="view-agenda">
       <section class="panel" aria-labelledby="week-title">
         <div class="panel-head">
           <h2 id="week-title">Week</h2>
@@ -121,6 +143,20 @@
           <div><button class="btn btn-outline btn-sm" type="submit">Dagen blokkeren</button></div>
         </form>
       </section>
+      </div>
+
+      <!-- Promoties -->
+      <div id="view-promos" hidden>
+        <section class="panel" aria-labelledby="promo-title">
+          <div class="panel-head">
+            <h2 id="promo-title">Promoties</h2>
+            <button class="btn btn-dark btn-sm" type="button" id="promo-new">+ Nieuwe promotie</button>
+          </div>
+          <p class="lead" style="margin-bottom:16px">Een promotie verschijnt automatisch op de website vanaf de startdatum en verdwijnt na de einddatum. Je hoeft niets handmatig aan of uit te zetten.</p>
+          <p class="form-message is-error" id="promo-msg" role="alert" hidden></p>
+          <div class="list" id="promo-list" aria-live="polite"></div>
+        </section>
+      </div>
     </div>
   </main>
 
@@ -156,6 +192,54 @@
         <div class="field"><label for="n-notes">Notitie <span class="hint">(optioneel)</span></label><textarea class="textarea" id="n-notes" maxlength="1000"></textarea></div>
         <p class="form-message is-error" id="n-msg" role="alert" hidden></p>
         <div class="dlg-actions"><button class="btn btn-outline btn-sm" type="button" data-close>Annuleren</button><button class="btn btn-dark btn-sm" type="submit" id="n-submit">Afspraak opslaan</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Promotie toevoegen / bewerken -->
+  <dialog id="promo-dialog" aria-labelledby="p-title">
+    <form id="promo-form" novalidate>
+      <div class="dlg-head"><h2 id="p-title">Nieuwe promotie</h2><button class="icon-btn" type="button" data-close aria-label="Sluiten">✕</button></div>
+      <div class="dlg-body">
+        <div class="field"><label for="p-title-in">Titel *</label><input class="input" id="p-title-in" type="text" maxlength="80" required></div>
+        <div class="field"><label for="p-desc">Beschrijving <span class="hint">(optioneel, max. 400 tekens)</span></label><textarea class="textarea" id="p-desc" maxlength="400" rows="3"></textarea></div>
+
+        <div class="field">
+          <label for="p-image">Afbeelding <span class="hint">(optioneel · JPG, PNG of WebP · max. 2 MB)</span></label>
+          <img class="img-preview" id="p-img-preview" alt="" hidden>
+          <input class="input" id="p-image" type="file" accept="image/jpeg,image/png,image/webp">
+          <label class="check" id="p-img-remove-wrap" hidden style="margin-top:8px"><input type="checkbox" id="p-img-remove"><span>Huidige afbeelding verwijderen</span></label>
+        </div>
+
+        <div class="grid-2">
+          <div class="field"><label for="p-type">Kortingstype *</label>
+            <select class="select" id="p-type"><option value="percentage">Percentage (%)</option><option value="fixed">Vast bedrag (€)</option></select></div>
+          <div class="field"><label for="p-value">Korting * <span class="hint" id="p-value-hint">(1 – 50 %)</span></label><input class="input" id="p-value" type="number" min="1" max="50" step="0.5" inputmode="decimal" required></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label for="p-service">Behandeling</label><select class="select" id="p-service"></select></div>
+          <div class="field"><label for="p-code">Promotiecode <span class="hint">(optioneel)</span></label><input class="input" id="p-code" type="text" maxlength="20" autocapitalize="characters" autocomplete="off" spellcheck="false"></div>
+        </div>
+        <p class="hint" style="margin:-6px 0 16px">Zonder code wordt de korting automatisch toegepast bij het boeken. Met code geldt ze enkel voor wie de code invult. De code zelf is niet zichtbaar op de website; zet hem in de beschrijving als iedereen hem mag zien. Een klant kan een promotie maar één keer gebruiken.</p>
+
+        <div class="grid-2">
+          <div class="field"><label for="p-start">Startdatum *</label><input class="input" id="p-start" type="date" required></div>
+          <div class="field"><label for="p-end">Einddatum * <span class="hint">(laatste dag inbegrepen)</span></label><input class="input" id="p-end" type="date" required></div>
+        </div>
+
+        <div class="checks">
+          <label class="check"><input type="checkbox" id="p-active" checked><span>Actief (uitgevinkt = nooit zichtbaar, ook niet binnen de datums)</span></label>
+          <label class="check"><input type="checkbox" id="p-popup" checked><span>Popup tonen</span></label>
+          <label class="check"><input type="checkbox" id="p-banner"><span>Banner bovenaan de website tonen</span></label>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label for="p-delay">Popup vertraging <span class="hint">(seconden)</span></label><input class="input" id="p-delay" type="number" min="0" max="120" step="1" inputmode="numeric" value="5"></div>
+          <div class="field"><label for="p-button">Knoptekst</label><input class="input" id="p-button" type="text" maxlength="40" value="Boek nu"></div>
+        </div>
+        <div class="field"><label for="p-priority">Prioriteit <span class="hint">(0 – 100; bij meerdere promoties komt de hoogste eerst)</span></label><input class="input" id="p-priority" type="number" min="0" max="100" step="1" inputmode="numeric" value="0"></div>
+
+        <p class="form-message is-error" id="p-msg" role="alert" hidden></p>
+        <div class="dlg-actions"><button class="btn btn-outline btn-sm" type="button" data-close>Annuleren</button><button class="btn btn-dark btn-sm" type="submit" id="p-submit">Promotie opslaan</button></div>
       </div>
     </form>
   </dialog>
@@ -350,6 +434,209 @@
       });
     });
     document.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', function () { b.closest('dialog').close(); }); });
+
+    /* ---- tabbladen ---- */
+    document.querySelectorAll('[data-view]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = b.dataset.view;
+        document.querySelectorAll('[data-view]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        $('view-agenda').hidden = v !== 'agenda';
+        $('view-promos').hidden = v !== 'promos';
+        if (v === 'promos') { renderPromos(); }
+      });
+    });
+
+    /* ---- promoties ---- */
+    var PB = 'promotions';                                   // naam van de opslagmap voor afbeeldingen
+    var promoState = { list: [], uses: {}, editing: null, previewUrl: null };
+    function brussels() { return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Brussels' }); }
+    function money(n) { return '€ ' + Number(n).toFixed(2).replace('.', ','); }
+    function discountText(p) { return p.discount_type === 'percentage' ? String(Number(p.discount_value)).replace('.', ',') + ' %' : money(p.discount_value); }
+    function promoStatus(p) {
+      if (!p.is_active) { return ['Uitgeschakeld', 'off']; }
+      var t = brussels();
+      if (t < p.start_date) { return ['Gepland', 'soon']; }
+      if (t > p.end_date) { return ['Verlopen', 'off']; }
+      return ['Actief nu', 'on'];
+    }
+    function shortDate(d) { return parse(d).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' }); }
+    function storagePath(url) { var i = (url || '').indexOf('/object/public/' + PB + '/'); return i < 0 ? null : decodeURIComponent(url.slice(i + 15 + PB.length + 1).split('?')[0]); }
+    async function dropImage(url) { var path = storagePath(url); if (path) { await db.storage.from(PB).remove([path]); } }
+
+    async function renderPromos() {
+      var box = $('promo-list'); msg('promo-msg');
+      var r = await db.from('promotions').select('*').order('start_date', { ascending: false });
+      if (r.error) { box.replaceChildren(el('p', 'empty', 'Kon de promoties niet laden: ' + r.error.message + (/relation|schema cache|does not exist/.test(r.error.message) ? ' — voer eerst de nieuwste supabase/schema.sql uit.' : ''))); return; }
+      var u = await db.from('bookings').select('promotion_id').eq('status', 'bevestigd').not('promotion_id', 'is', null);
+      promoState.uses = {};
+      (u.data || []).forEach(function (b) { promoState.uses[b.promotion_id] = (promoState.uses[b.promotion_id] || 0) + 1; });
+      promoState.list = r.data;
+      if (!r.data.length) { box.replaceChildren(el('p', 'empty', 'Nog geen promoties. Klik op “+ Nieuwe promotie” om te beginnen.')); return; }
+      var frag = document.createDocumentFragment();
+      r.data.forEach(function (p) { frag.append(promoRow(p)); });
+      box.replaceChildren(frag);
+    }
+
+    function promoRow(p) {
+      var st = promoStatus(p), row = el('div', 'prow'), main = el('div', 'prow-main'), body = el('div');
+      var thumb;
+      if (p.image_url) { thumb = el('img', 'prow-thumb'); thumb.src = p.image_url; thumb.alt = ''; thumb.loading = 'lazy'; }
+      else { thumb = el('div', 'prow-thumb none', '%'); thumb.setAttribute('aria-hidden', 'true'); }
+      var tags = el('div', 'tags');
+      tags.append(el('span', 'badge ' + st[1], st[0]));
+      if (p.show_popup) { tags.append(el('span', 'badge plain', 'Popup')); }
+      if (p.show_banner) { tags.append(el('span', 'badge plain', 'Banner')); }
+      if (p.promo_code) { tags.append(el('span', 'badge plain', 'Code ' + p.promo_code)); }
+      var svc = p.service_slug ? (TREAT[p.service_slug] ? TREAT[p.service_slug].name : p.service_slug) : 'Alle behandelingen';
+      var uses = promoState.uses[p.id] || 0;
+      body.append(tags, el('h3', null, p.title),
+        el('div', 'meta', discountText(p) + ' korting · ' + svc),
+        el('div', 'meta', shortDate(p.start_date) + ' t/m ' + shortDate(p.end_date) + ' · ' + uses + ' keer gebruikt'));
+      main.append(thumb, body);
+
+      var acts = el('div', 'acts');
+      var edit = el('button', 'btn btn-outline btn-sm', 'Bewerken'); edit.type = 'button';
+      edit.addEventListener('click', function () { openPromo(p); });
+      var tog = el('button', 'btn btn-outline btn-sm', p.is_active ? 'Uitschakelen' : 'Activeren'); tog.type = 'button';
+      tog.addEventListener('click', async function () {
+        tog.disabled = true;
+        var r = await db.from('promotions').update({ is_active: !p.is_active }).eq('id', p.id);
+        if (r.error) { msg('promo-msg', 'Wijzigen mislukt: ' + r.error.message); tog.disabled = false; return; }
+        renderPromos();
+      });
+      var del = el('button', 'btn btn-outline btn-sm', 'Verwijderen'); del.type = 'button';
+      del.addEventListener('click', async function () {
+        if (!del.dataset.confirm) {
+          del.dataset.confirm = '1'; del.textContent = 'Zeker? Klik opnieuw';
+          window.setTimeout(function () { del.dataset.confirm = ''; del.textContent = 'Verwijderen'; }, 4000);
+          return;
+        }
+        del.disabled = true;
+        var r = await db.from('promotions').delete().eq('id', p.id);
+        if (r.error) { msg('promo-msg', 'Verwijderen mislukt: ' + r.error.message); del.disabled = false; return; }
+        if (p.image_url) { dropImage(p.image_url); }
+        renderPromos();
+      });
+      acts.append(edit, tog, del);
+      row.append(main, acts);
+      return row;
+    }
+
+    // behandelingen met een prijs (de gratis intake kan niet korting krijgen)
+    var psel = $('p-service');
+    (function () {
+      var all = el('option', null, 'Alle behandelingen'); all.value = ''; psel.append(all);
+      DATA.services.filter(function (s) { return s.price > 0; }).forEach(function (s) {
+        var o = el('option', null, s.name + ' (' + money(s.price) + ')'); o.value = s.slug; psel.append(o);
+      });
+    })();
+
+    function syncTypeHint() {
+      var pct = $('p-type').value === 'percentage', v = $('p-value');
+      v.max = pct ? 50 : 100; v.step = pct ? 0.5 : 0.01;
+      $('p-value-hint').textContent = pct ? '(1 – 50 %)' : '(€ 1 – 100)';
+    }
+    $('p-type').addEventListener('change', syncTypeHint);
+
+    function setPreview(url) {
+      var img = $('p-img-preview');
+      if (promoState.previewUrl) { URL.revokeObjectURL(promoState.previewUrl); promoState.previewUrl = null; }
+      img.hidden = !url; if (url) { img.src = url; }
+    }
+    $('p-image').addEventListener('change', function () {
+      var f = this.files[0];
+      if (!f) { setPreview(promoState.editing && promoState.editing.image_url && !$('p-img-remove').checked ? promoState.editing.image_url : null); return; }
+      promoState.previewUrl = URL.createObjectURL(f);
+      var img = $('p-img-preview'); img.src = promoState.previewUrl; img.hidden = false;
+    });
+    $('p-img-remove').addEventListener('change', function () {
+      if ($('p-image').files[0]) { return; }
+      setPreview(this.checked ? null : promoState.editing.image_url);
+    });
+
+    function openPromo(p) {
+      promoState.editing = p || null; msg('p-msg');
+      $('promo-form').reset();
+      $('p-title').textContent = p ? 'Promotie bewerken' : 'Nieuwe promotie';
+      var d = p || { title: '', description: '', discount_type: 'percentage', discount_value: '', promo_code: '', service_slug: '', start_date: today(), end_date: '', is_active: true, show_popup: true, show_banner: false, popup_delay: 5, button_text: 'Boek nu', priority: 0, image_url: null };
+      $('p-title-in').value = d.title; $('p-desc').value = d.description || '';
+      $('p-type').value = d.discount_type; syncTypeHint(); $('p-value').value = d.discount_value;
+      $('p-code').value = d.promo_code || ''; psel.value = d.service_slug || '';
+      $('p-start').value = d.start_date; $('p-end').value = d.end_date;
+      $('p-active').checked = d.is_active; $('p-popup').checked = d.show_popup; $('p-banner').checked = d.show_banner;
+      $('p-delay').value = d.popup_delay; $('p-button').value = d.button_text; $('p-priority').value = d.priority;
+      $('p-img-remove-wrap').hidden = !d.image_url;
+      setPreview(d.image_url);
+      $('promo-dialog').showModal();
+    }
+    $('promo-new').addEventListener('click', function () { openPromo(null); });
+    $('promo-dialog').addEventListener('close', function () { setPreview(null); });
+
+    function readPromoForm() {
+      var type = $('p-type').value, value = parseFloat($('p-value').value);
+      var code = $('p-code').value.trim().toUpperCase();
+      var delay = $('p-delay').value === '' ? 5 : Number($('p-delay').value), prio = $('p-priority').value === '' ? 0 : Number($('p-priority').value);
+      var title = $('p-title-in').value.trim(), button = $('p-button').value.trim(), start = $('p-start').value, end = $('p-end').value;
+      var svc = psel.value || null, err = null;
+      if (title.length < 2) { err = ['Vul een titel in (minstens 2 tekens).', 'p-title-in']; }
+      else if (!isFinite(value) || value <= 0) { err = ['Vul een korting in die groter is dan 0.', 'p-value']; }
+      else if (type === 'percentage' && value > 50) { err = ['Een kortingspercentage mag maximaal 50 % zijn.', 'p-value']; }
+      else if (type === 'fixed' && value > 100) { err = ['Een vaste korting mag maximaal € 100 zijn.', 'p-value']; }
+      else if (type === 'fixed' && svc && TREAT[svc] && value > TREAT[svc].price) { err = ['De vaste korting is hoger dan de prijs van deze behandeling (' + money(TREAT[svc].price) + ').', 'p-value']; }
+      else if (code && !/^[A-Z0-9_-]{3,20}$/.test(code)) { err = ['De code mag enkel letters, cijfers, - en _ bevatten (3 tot 20 tekens).', 'p-code']; }
+      else if (!start) { err = ['Kies een startdatum.', 'p-start']; }
+      else if (!end) { err = ['Kies een einddatum.', 'p-end']; }
+      else if (end < start) { err = ['De einddatum mag niet vóór de startdatum liggen.', 'p-end']; }
+      else if (!Number.isInteger(delay) || delay < 0 || delay > 120) { err = ['De popup-vertraging moet een heel getal van 0 tot 120 seconden zijn.', 'p-delay']; }
+      else if (!button || button.length > 40) { err = ['Vul een knoptekst in (max. 40 tekens).', 'p-button']; }
+      else if (!Number.isInteger(prio) || prio < 0 || prio > 100) { err = ['De prioriteit moet een heel getal van 0 tot 100 zijn.', 'p-priority']; }
+      if (err) { return { error: err }; }
+      return { row: {
+        title: title, description: $('p-desc').value.trim() || null, discount_type: type, discount_value: value,
+        promo_code: code || null, service_slug: svc, start_date: start, end_date: end,
+        is_active: $('p-active').checked, show_popup: $('p-popup').checked, show_banner: $('p-banner').checked,
+        popup_delay: delay, button_text: button, priority: prio
+      } };
+    }
+
+    function promoError(e) {
+      var m = (e && e.message) || '';
+      if (/korting_hoger_dan_prijs/.test(m)) { return 'De vaste korting is hoger dan de prijs van de gekozen behandeling.'; }
+      if (/promotions_code_uidx|duplicate key/.test(m)) { return 'Deze promotiecode bestaat al. Kies een andere code.'; }
+      if (/promotions_dates_ok/.test(m)) { return 'De einddatum mag niet vóór de startdatum liggen.'; }
+      if (/promotions_discount_ok/.test(m)) { return 'Ongeldige korting (percentage 1–50 %, vast bedrag € 1–100).'; }
+      if (/row-level security|permission denied/.test(m)) { return 'Je hebt geen rechten om promoties te beheren.'; }
+      return 'Opslaan mislukt: ' + m;
+    }
+
+    $('promo-form').addEventListener('submit', async function (e) {
+      e.preventDefault(); msg('p-msg');
+      var res = readPromoForm();
+      if (res.error) { msg('p-msg', res.error[0]); $(res.error[1]).focus(); return; }
+      var row = res.row, file = $('p-image').files[0], old = promoState.editing, oldUrl = old && old.image_url, uploaded = null;
+      var btn = $('p-submit'); btn.disabled = true;
+      try {
+        if (file) {
+          var ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[file.type];
+          if (!ext) { msg('p-msg', 'Kies een JPG-, PNG- of WebP-afbeelding.'); return; }
+          if (file.size > 2 * 1024 * 1024) { msg('p-msg', 'De afbeelding is groter dan 2 MB. Verklein ze eerst.'); return; }
+          var path = (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())) + '.' + ext;
+          var up = await db.storage.from(PB).upload(path, file, { contentType: file.type, cacheControl: '31536000' });
+          if (up.error) { msg('p-msg', 'Afbeelding uploaden mislukt: ' + up.error.message); return; }
+          uploaded = db.storage.from(PB).getPublicUrl(path).data.publicUrl;
+          row.image_url = uploaded;
+        } else if (oldUrl && !$('p-img-remove').checked) {
+          row.image_url = oldUrl;
+        } else {
+          row.image_url = null;
+        }
+        var r = old ? await db.from('promotions').update(row).eq('id', old.id) : await db.from('promotions').insert(row);
+        if (r.error) { if (uploaded) { dropImage(uploaded); } msg('p-msg', promoError(r.error)); return; }
+        if (oldUrl && oldUrl !== row.image_url) { dropImage(oldUrl); }
+        $('promo-dialog').close();
+        renderPromos();
+      } finally { btn.disabled = false; }
+    });
 
     start();
   })();

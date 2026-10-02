@@ -33,6 +33,7 @@
   <script src="assets/js/main.js" defer></script>
   <script src="assets/js/config.js" defer></script>
   <script src="assets/js/services.js" defer></script>
+  <script src="assets/js/promotions.js" defer></script>
   <script src="assets/js/booking.js" defer></script>
   <script type="application/ld+json">
 {
@@ -106,6 +107,16 @@
               <label for="service">Welke behandeling wil je boeken?</label>
               <select class="select" id="service" name="service" required aria-describedby="service-summary"><option value="">Kies een behandeling</option><optgroup label="Intakegesprek"><option value="intakegesprek">Intakegesprek — Gratis</option></optgroup><optgroup label="Season specials"><option value="melt-away">Melt Away — € 55,00</option><option value="higher-self">Higher Self — € 75,00</option><option value="go-within">Go Within — € 95,00</option></optgroup><optgroup label="Gentleman Reset"><option value="iron-back-mind-reset">Iron back &amp; mind reset — € 65,00</option><option value="back-in-control">Back in control — € 50,00</option><option value="mind-control">Mind control — € 40,00</option></optgroup><optgroup label="Facials"><option value="inner-balance-facial">Inner balance facial — € 75,00</option><option value="heart-harmony-facial">Heart harmony facial — € 85,00</option><option value="grounding-glow-facial">Grounding glow facial — € 105,00</option></optgroup></select>
               <p class="service-summary" id="service-summary" aria-live="polite"></p>
+            </div>
+            <!-- Promotiecode: de knop verschijnt pas als de promotiefuncties van de agenda bereikbaar zijn -->
+            <button class="text-link promo-toggle" type="button" id="promo-toggle" aria-expanded="false" aria-controls="promo-field" hidden>Heb je een promotiecode?</button>
+            <div class="field promo-field" id="promo-field" hidden>
+              <label for="promo-code">Promotiecode</label>
+              <div class="promo-row">
+                <input class="input" id="promo-code" name="promo" type="text" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="promo-status">
+                <button class="btn btn-outline" type="button" id="promo-apply">Toepassen</button>
+              </div>
+              <p class="promo-status" id="promo-status" aria-live="polite"></p>
             </div>
             <label class="check" id="online-wrap" hidden>
               <input type="checkbox" id="online" name="online">

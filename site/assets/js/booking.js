@@ -28,6 +28,7 @@
     prev: $('prev-week'), next: $('next-week'), weekLabel: $('week-label'),
     days: $('day-row'), slots: $('slot-row'),
     name: $('name'), email: $('email'), phone: $('phone'), notes: $('notes'), honeypot: $('website'),
+    promoToggle: $('promo-toggle'), promoField: $('promo-field'), promoCode: $('promo-code'), promoApply: $('promo-apply'), promoStatus: $('promo-status'),
     summary: $('booking-summary'), message: $('form-message'), submit: $('submit-btn'),
     doneDetails: $('done-details'), ics: $('ics-link')
   };
@@ -40,7 +41,11 @@
   var WA = 'https://wa.me/' + CONTACT.whatsapp;
   var DAY_SHORT = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
 
-  var state = { offset: 0, date: null, slot: null, loading: false, loadError: false };
+  var state = { offset: 0, date: null, slot: null, loading: false, loadError: false,
+                quote: null,     // prijsberekening van de server: { slug, list, discount, price, promotion }
+                code: '',        // toegepaste (geldige) promotiecode
+                forced: null };  // prijs die de server bij het boeken opgaf als die afweek: { slug, price }
+  var quoteSeq = 0;
   var cache = {};            // weekKey -> [{date:'YYYY-MM-DD', s:minuten, e:minuten}]
   var weekController = null;
   var icsUrl = null;
@@ -58,6 +63,17 @@
   function duration(m) { if (m < 60) { return m + ' min'; } var h = Math.floor(m / 60), r = m % 60; return h + 'u' + (r ? pad(r) : ''); }
   function currentService() { return SERVICES[el.service.value] || null; }
   function today() { return startOfDay(new Date()); }
+  // Prijs na korting: komt altijd van de server (get_price_quote); zonder antwoord blijft de gewone prijs staan.
+  function activeQuote() {
+    var s = currentService();
+    if (!s || !state.quote || state.quote.slug !== s.slug) { return null; }
+    var q = state.quote;
+    if (state.forced && state.forced.slug === s.slug && state.forced.price !== q.price) {
+      return { slug: q.slug, list: q.list, price: state.forced.price, discount: Math.max(0, q.list - state.forced.price), promotion: state.forced.price < q.list ? q.promotion : null };
+    }
+    return q;
+  }
+  function finalPrice(service) { var q = activeQuote(); return q ? q.price : service.price; }
   function lastBookableDay() { return addDays(today(), RULES.maxDaysAhead); }
 
   /* ---------- API ---------- */
@@ -215,10 +231,15 @@
   function renderSummary() {
     var service = currentService();
     if (service) {
-      var parts = [];
-      if (service.showDuration) { parts.push(duration(service.duration)); }
-      parts.push(price(service.price));
-      el.serviceSummary.textContent = parts.join(' · ');
+      var q = activeQuote(), lead = service.showDuration ? duration(service.duration) + ' · ' : '';
+      if (q && q.discount > 0) {
+        var now = document.createElement('strong');
+        now.className = 'promo-now'; now.textContent = price(q.price);
+        el.serviceSummary.replaceChildren(document.createTextNode(lead), now,
+          document.createTextNode(' (normaal ' + price(q.list) + ')' + (q.promotion ? ' · Actie: ' + q.promotion : '')));
+      } else {
+        el.serviceSummary.textContent = lead + price(service.price);
+      }
     } else {
       el.serviceSummary.textContent = '';
     }
@@ -231,7 +252,7 @@
       el.summary.appendChild(strong);
       el.summary.appendChild(document.createTextNode(
         ' op ' + fmt(state.date, { weekday: 'long', day: 'numeric', month: 'long' }) + ' om ' + state.slot +
-        ' · ' + price(service.price)));
+        ' · ' + price(finalPrice(service)) + (activeQuote() && activeQuote().discount > 0 ? ' (normaal ' + price(service.price) + ')' : '')));
     } else {
       el.summary.textContent = !service ? 'Kies een behandeling, dag en uur.'
         : !state.date ? 'Kies nog een dag en een uur.' : 'Kies nog een uur.';
@@ -262,9 +283,57 @@
   /* ---------- Interactie ---------- */
   el.service.addEventListener('change', function () {
     state.slot = null;
+    state.forced = null;
     clearMessage();
     render();
+    refreshQuote(state.code);
   });
+
+  /* ---------- Promoties (prijs en code) ---------- */
+  var quoteAvailable = false;
+  function setPromoStatus(text, ok) {
+    el.promoStatus.textContent = text || '';
+    el.promoStatus.className = 'promo-status' + (text ? (ok ? ' is-ok' : ' is-bad') : '');
+  }
+  // Vraagt de server wat deze behandeling (met eventuele code) kost. De server rekent; de browser toont enkel.
+  function refreshQuote(tryCode) {
+    var service = currentService(), seq = ++quoteSeq;
+    if (!service) { state.quote = null; state.code = ''; setPromoStatus(''); renderSummary(); return Promise.resolve(); }
+    return api('get_price_quote', { p_service: service.slug, p_code: tryCode || null })
+      .then(function (q) {
+        if (seq !== quoteSeq) { return; }
+        quoteAvailable = true;
+        el.promoToggle.hidden = false;
+        state.quote = { slug: service.slug, list: +q.list_price, discount: +q.discount, price: +q.price, promotion: q.promotion || null };
+        if (tryCode && q.code_status === 'ok') {
+          state.code = tryCode;
+          setPromoStatus('Code toegepast' + (state.quote.promotion ? ': ' + state.quote.promotion : '') + '.', true);
+        } else {
+          state.code = '';
+          setPromoStatus(tryCode ? 'Deze code is ongeldig, verlopen of geldt niet voor deze behandeling.' : '', false);
+        }
+      })
+      .catch(function () {
+        if (seq !== quoteSeq) { return; }
+        state.quote = null; state.code = '';          // zonder prijsberekening: gewone prijs, boeken blijft werken
+        if (tryCode) { setPromoStatus('De code kon nu niet gecontroleerd worden. Probeer het later opnieuw.', false); }
+      })
+      .finally(function () { if (seq === quoteSeq) { renderSummary(); } });
+  }
+  function typedCode() { return el.promoCode.value.trim().toUpperCase(); }
+  el.promoToggle.addEventListener('click', function () {
+    var open = el.promoField.hidden;
+    el.promoField.hidden = !open;
+    el.promoToggle.setAttribute('aria-expanded', String(open));
+    if (open) { el.promoCode.focus(); }
+  });
+  el.promoApply.addEventListener('click', function () {
+    var code = typedCode();
+    if (!currentService()) { setPromoStatus('Kies eerst een behandeling.', false); return; }
+    state.forced = null;
+    refreshQuote(code);
+  });
+  el.promoCode.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); el.promoApply.click(); } });
 
   el.days.addEventListener('click', function (e) {
     var btn = e.target.closest('.day-btn');
@@ -318,6 +387,12 @@
       return;
     }
 
+    if (typedCode() !== state.code) {
+      showMessage('Controleer eerst je promotiecode met “Toepassen”, of maak het veld leeg.');
+      el.promoCode.focus();
+      return;
+    }
+
     // Spambot vulde het verborgen veld in: doe alsof het gelukt is, maar boek niets.
     if (el.honeypot && el.honeypot.value) { showDone({ service: service.name, start: state.slot, end: state.slot }, service); return; }
 
@@ -325,7 +400,7 @@
     if (service.slug === 'intakegesprek' && el.online.checked) { notes = '[Online intake gewenst] ' + notes; }
 
     setBusy(true);
-    api('book_appointment', {
+    var payload = {
       p_service: service.slug,
       p_date: ymd(state.date),
       p_start: state.slot,
@@ -333,7 +408,15 @@
       p_email: email,
       p_phone: el.phone.value.trim() || null,
       p_notes: notes || null
-    })
+    };
+    // Promotie-gegevens enkel meesturen als de prijsberekening werkt (zo blijft de agenda ook werken zonder promotiefuncties).
+    // De server rekent de prijs altijd zelf uit; p_expected_price beschermt de klant tegen een afwijkend bedrag.
+    var shown = activeQuote();
+    if (quoteAvailable) {
+      payload.p_promo_code = state.code || null;
+      if (shown) { payload.p_expected_price = shown.price; }
+    }
+    api('book_appointment', payload)
       .then(function (res) {
         delete cache[ymd(weekStart(state.offset))];
         showDone(res, service);
@@ -362,6 +445,23 @@
       state.slot = null;
       showMessage('Dit moment is niet (meer) beschikbaar. Kies een ander uur.');
       loadWeek(true);
+    } else if (m.indexOf('prijs_gewijzigd') > -1) {
+      var np = parseFloat((m.match(/prijs_gewijzigd:([0-9.]+)/) || [])[1]);
+      if (isFinite(np)) { state.forced = { slug: el.service.value, price: np }; }
+      showMessage('De prijs voor deze afspraak is ' + (isFinite(np) ? price(np) : 'gewijzigd') + '. Controleer het bedrag en bevestig opnieuw.');
+      refreshQuote(state.code);
+    } else if (m.indexOf('code_al_gebruikt') > -1) {
+      state.code = ''; el.promoCode.value = '';
+      showMessage('Je hebt deze promotiecode al gebruikt.');
+      setPromoStatus('', false); refreshQuote('');
+    } else if (m.indexOf('promotie_al_gebruikt') > -1) {
+      showMessage('Je hebt deze actie al gebruikt. Controleer het bedrag en bevestig opnieuw.');
+      refreshQuote(state.code);
+    } else if (m.indexOf('ongeldige_code') > -1) {
+      state.code = '';
+      showMessage('Deze promotiecode is niet (meer) geldig. Pas hem aan of maak het veld leeg.');
+      setPromoStatus('Deze code is ongeldig, verlopen of geldt niet voor deze behandeling.', false);
+      refreshQuote('');
     } else if (m.indexOf('te_veel_boekingen') > -1) {
       showMessage('Je hebt al enkele afspraken openstaan. Wil je er nog een bij?', 'error', true);
     } else if (m.indexOf('onbekende_behandeling') > -1) {
@@ -377,7 +477,9 @@
   function showDone(res, service) {
     var day = state.date;
     var when = fmt(day, { weekday: 'long', day: 'numeric', month: 'long' });
-    el.doneDetails.textContent = (res.service || service.name) + ' op ' + when + ' om ' + res.start + '. Adres: ' + CONTACT.address + '.';
+    el.doneDetails.textContent = (res.service || service.name) + ' op ' + when + ' om ' + res.start + '.' +
+      (res.discount > 0 ? ' Prijs na korting: ' + price(res.price) + ' (normaal ' + price(res.list_price) + ').' : '') +
+      ' Adres: ' + CONTACT.address + '.';
     buildIcs(res, service, day);
     form.hidden = true;
     done.hidden = false;
@@ -428,4 +530,7 @@
   })();
 
   loadWeek();
+  var urlCode = (new URLSearchParams(window.location.search).get('code') || '').trim().toUpperCase();
+  if (/^[A-Z0-9_-]{3,20}$/.test(urlCode)) { el.promoCode.value = urlCode; }
+  refreshQuote(urlCode).then(function () { if (urlCode && !el.promoToggle.hidden) { el.promoToggle.click(); } });
 })();

@@ -24,6 +24,13 @@ def mock_supabase(route):
         body = json.loads(route.request.post_data or "{}")
         return route.fulfill(status=200, content_type="application/json", body=json.dumps(
             {"id": "test-id", "service": "Mind control", "date": body["p_date"], "start": body["p_start"], "end": "x"}))
+    if "/rest/v1/promotions" in url:   # één lopende promotie met banner + popup, zodat ook die op toegankelijkheid gecontroleerd worden
+        return route.fulfill(status=200, content_type="application/json", body=json.dumps([{
+            "id": "aaaaaaaa-0000-0000-0000-000000000001", "title": "Winteractie", "description": "Een heerlijke korting op je rugmassage.",
+            "image_url": None, "discount_type": "percentage", "discount_value": 20, "service_slug": "back-in-control", "end_date": "2026-12-31",
+            "show_popup": True, "show_banner": True, "popup_delay": 0, "button_text": "Boek nu", "priority": 1, "requires_code": False}]))
+    if url.endswith("/rpc/get_price_quote"):
+        return route.fulfill(status=200, content_type="application/json", body=json.dumps({"list_price": 50, "discount": 10, "price": 40, "promotion": "Winteractie", "code_status": "none"}))
     return route.fulfill(status=404, body="{}")
 
 report = {"console": [], "failed": [], "axe": {}, "links": []}

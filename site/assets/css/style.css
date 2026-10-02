@@ -447,3 +447,48 @@ p { text-wrap: pretty; }
   .hero::before, .hero-media, .hero-watermark { display: none; }
   .js .reveal { opacity: 1; translate: none; }
 }
+
+/* ---------- Promoties: banner, popup en promotiecode (booking) ---------- */
+.promo-banner { background: var(--charcoal); color: var(--white); font-size: 13px; line-height: 1.45; position: relative; }
+.promo-banner-inner { display: flex; align-items: center; justify-content: center; gap: 12px 16px; padding-block: 8px; padding-right: 56px; min-height: 44px; flex-wrap: wrap; }
+.promo-banner-text { margin: 0; text-align: center; }
+.promo-banner-text strong { font-weight: 500; letter-spacing: .02em; }
+.promo-banner-offer::before { content: " · "; }
+.promo-banner-btn { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 16px; border-radius: 999px; background: var(--taupe-light); color: var(--charcoal); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; transition: background-color .2s ease; }
+.promo-banner-btn:hover { background: var(--white); }
+.promo-banner-close { position: absolute; top: 50%; right: max(var(--gutter) - 12px, 4px); translate: 0 -50%; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--white); opacity: .8; }
+.promo-banner-close:hover { opacity: 1; background: rgba(255, 255, 255, .12); }
+.promo-banner a:focus-visible, .promo-banner button:focus-visible { outline: 2px solid var(--taupe-light); outline-offset: 2px; }
+.has-promo-banner .site-header { top: var(--promo-h, 0px); }
+@media (max-width: 560px) { .promo-banner-offer::before { content: ""; display: block; } }
+
+.promo-popup { border: 0; padding: 0; margin: auto; background: transparent; width: min(460px, calc(100vw - 32px)); max-width: none; max-height: none; overflow: visible; color: var(--charcoal); }
+.promo-popup::backdrop { background: rgba(41, 36, 32, .55); }
+.promo-popup-card { position: relative; background: var(--white); border-radius: var(--radius-lg); overflow: hidden auto; max-height: calc(100dvh - 32px); box-shadow: 0 30px 70px -20px rgba(41, 36, 32, .45); }
+.promo-popup-card:focus { outline: none; }
+.promo-popup-media { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--sand); }
+.promo-popup-body { padding: clamp(24px, 5vw, 36px); text-align: center; }
+.promo-popup-body .eyebrow { margin-bottom: 10px; }
+.promo-popup h2 { font-family: var(--serif); font-weight: 500; font-size: clamp(1.9rem, 6vw, 2.5rem); line-height: 1.1; margin: 0 0 14px; }
+.promo-popup-badge { display: inline-block; margin: 0 0 14px; padding: 6px 16px; border-radius: 999px; background: var(--cream); color: var(--taupe-dark); font-size: 13px; letter-spacing: .03em; }
+.promo-popup-text { color: var(--text-soft); margin: 0 0 20px; }
+.promo-popup-hint { font-size: 13px; color: var(--text-soft); margin: -8px 0 18px; }
+.promo-popup-body .btn { min-width: 200px; }
+.promo-popup-close { position: absolute; top: 10px; right: 10px; z-index: 1; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, .94); border: 1px solid var(--line); color: var(--charcoal); transition: background-color .2s ease; }
+.promo-popup-close:hover { background: var(--cream); }
+@media (prefers-reduced-motion: no-preference) {
+  .promo-popup[open] .promo-popup-card { animation: promo-in .4s var(--ease); }
+  .promo-popup[open]::backdrop { animation: promo-fade .3s ease; }
+  @keyframes promo-in { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+  @keyframes promo-fade { from { opacity: 0; } }
+}
+
+.promo-toggle { display: inline-block; margin-top: 10px; font-size: 13px; }
+.promo-field { margin-top: 12px; margin-bottom: 0; }
+.promo-row { display: flex; gap: 10px; }
+.promo-row .input { flex: 1; min-width: 0; text-transform: uppercase; }
+.booking-card .promo-row .btn { width: auto; flex: none; }
+.promo-status { font-size: 13px; min-height: 1.4em; margin: 2px 0 0; color: var(--text-soft); }
+.promo-status.is-ok { color: var(--success); }
+.promo-status.is-bad { color: var(--error); }
+.promo-now { color: var(--charcoal); font-weight: 500; }

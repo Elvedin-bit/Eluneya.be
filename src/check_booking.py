@@ -11,6 +11,10 @@ def mock(route):
             d = start + datetime.timedelta(days=i)
             if d.weekday() == 2: rows.append({"booking_date": d.isoformat(), "start_time": "13:00:00", "blocked_until": "14:15:00"})
         return route.fulfill(status=200, content_type="application/json", body=json.dumps(rows))
+    if "/rest/v1/promotions" in url:   # geen lopende promoties
+        return route.fulfill(status=200, content_type="application/json", body="[]")
+    if url.endswith("get_price_quote"):
+        return route.fulfill(status=200, content_type="application/json", body=json.dumps({"list_price": 50, "discount": 0, "price": 50, "promotion": None, "code_status": "none"}))
     if mode["book"] == "bezet":
         return route.fulfill(status=400, content_type="application/json", body=json.dumps({"code": "P0001", "message": "tijdslot_bezet"}))
     return route.fulfill(status=200, content_type="application/json", body=json.dumps({"id": "abc", "service": "Back in control", "date": body["p_date"], "start": body["p_start"], "end": "x"}))
