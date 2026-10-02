@@ -292,8 +292,12 @@ as $$
             p.priority desc, p.created_at
    limit 1;
 $$;
-revoke all on function public._promo_code_state(text, numeric, text, text) from public;
-revoke all on function public._pick_promotion(text, numeric, text, text) from public;
+-- Supabase geeft nieuwe functies standaard ook rechten aan anon/authenticated; daarom hier uitdrukkelijk
+-- ook van die rollen afnemen. Anders kon een bezoeker deze functies via de API aanroepen
+-- (bv. nagaan of een e-mailadres een promotie al gebruikte).
+revoke all on function public._promo_code_state(text, numeric, text, text) from public, anon, authenticated;
+revoke all on function public._pick_promotion(text, numeric, text, text) from public, anon, authenticated;
+revoke all on function public.promotions_before_write() from public, anon, authenticated;
 
 -- Prijsberekening voor de afsprakenpagina: normale prijs, korting en prijs na korting.
 -- De promocode wordt hier niet bewaard en de prijs in de tabel treatments verandert nooit.
@@ -498,7 +502,7 @@ set search_path = ''
 as $$
   select exists (select 1 from public.admins a where a.user_id = auth.uid());
 $$;
-revoke all on function public.is_admin() from public;
+revoke all on function public.is_admin() from public, anon;
 grant execute on function public.is_admin() to authenticated;
 
 -- Afspraken: lezen, toevoegen (bv. telefonische boeking) en annuleren. Nooit verwijderen.

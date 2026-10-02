@@ -168,5 +168,99 @@ r = j(expect("quote mind-control met GROOT100: prijs 0, niet negatief", q("mind-
 expect("percentage-afronding 33 %", f"insert into public.promotions(title,discount_type,discount_value,start_date,end_date,service_slug) values ('Derde','percentage',33,'{iso(0)}','{iso(2)}','iron-back-mind-reset')", "authenticated", ADMIN)
 r = j(expect("  65 x 33 % = 21,45 -> 43,55", q("iron-back-mind-reset"), "anon")); ok("  43.55", r["price"] == 43.55, r)
 
+
+print("\nLaatste controle")
+import subprocess as sp, time
+W3 = (wed + datetime.timedelta(days=14)).isoformat(); W4 = (wed + datetime.timedelta(days=21)).isoformat(); W5 = (wed + datetime.timedelta(days=28)).isoformat()
+def bk(day, slot, email, svc="back-in-control", code=None, exp=None):
+    n = f"p_service=>'{svc}', p_date=>'{day}', p_start=>'{slot}', p_name=>'Klant', p_email=>'{email}'"
+    if code is not None: n += f", p_promo_code=>'{code}'"
+    if exp is not None: n += f", p_expected_price=>{exp}"
+    return f"select book_appointment({n})"
+def reset(extra=""):
+    sql("delete from public.bookings; delete from public.promotions;" + extra)
+def addp(title, typ, val, svc=None, code=None, start=-1, end=10, active="true"):
+    s = f"'{svc}'" if svc else "null"; c = f"'{code}'" if code else "null"
+    return f"insert into public.promotions(title,discount_type,discount_value,service_slug,promo_code,start_date,end_date,is_active) values ('{title}','{typ}',{val},{s},{c},'{iso(start)}','{iso(end)}',{active});"
+
+print(" 2. Manipulatie via de frontend (bezoeker = anon)")
+out = expect("functies die een bezoeker mag aanroepen", "select string_agg(p.proname, ',' order by p.proname) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname not like 'gbt%' and p.proname not like '%\\_dist' and has_function_privilege('anon', p.oid, 'execute')")
+ok("  alleen get_booked_slots, book_appointment en get_price_quote (geen interne functies, geen is_admin)", out == "book_appointment,get_booked_slots,get_price_quote", out)
+out = expect("book_appointment heeft geen parameter voor prijs/korting/promotion_id", "select pg_get_function_arguments(p.oid) from pg_proc p where proname='book_appointment'")
+ok("  parameters: enkel dienst, datum, uur, gegevens, promocode, verwachte prijs", not any(w in out for w in ["p_price", "p_discount", "p_promotion", "p_korting"]) and "p_promo_code" in out and "p_expected_price" in out, out)
+reset(addp("PA", "percentage", 20, "back-in-control"))
+denied("rechtstreeks boeking invoegen met eigen prijs/promotion_id", f"insert into public.bookings(service_slug,service_name,price_eur,booking_date,start_time,end_time,blocked_until,client_name,promotion_id) select 'back-in-control','x',1,'{W3}','13:00','13:45','14:00','Hack',id from public.promotions", "anon", why="permission denied")
+denied("rechtstreeks een boeking wijzigen (prijs)", "update public.bookings set price_eur=0", "anon", why="permission denied")
+denied("ingelogd zonder admin: boeking invoegen", f"insert into public.bookings(service_slug,service_name,price_eur,booking_date,start_time,end_time,blocked_until,client_name) values ('back-in-control','x',1,'{W3}','13:00','13:45','14:00','Hack')", "authenticated", USER, why="row-level security")
+out = expect("ingelogd zonder admin: prijs/promotie van boekingen wijzigen raakt 0 rijen", "with u as (update public.bookings set promotion_id=null, price_eur=0, discount_eur=0 returning 1) select count(*) from u", "authenticated", USER); ok("  0 rijen", out.endswith("0"), out)
+denied("verwachte prijs 1 (manipulatie) -> geen boeking", bk(W3, "13:00", "m@test.be", exp=1), "anon", why="prijs_gewijzigd:40")
+out = expect("  er is niets geboekt", "select count(*) from public.bookings", None); ok("  0 boekingen", out == "0", out)
+denied("verwachte prijs 999", bk(W3, "13:00", "m@test.be", exp=999), "anon", why="prijs_gewijzigd:40")
+r = j(expect("zonder verwachte prijs: server bepaalt zelf (40)", bk(W3, "13:00", "m@test.be"), "anon")); ok("  prijs 40 uit server", r["price"] == 40, r)
+denied("SQL-injectie-achtige dienst", bk(W3, "14:00", "m2@test.be", svc="x''; drop table public.bookings;--"), "anon", why="onbekende_behandeling")
+out = expect("  tabel bookings bestaat nog", "select count(*) from public.bookings"); ok("  1", out == "1", out)
+denied("rechtstreeks promoties lezen incl. code", "select promo_code from public.promotions", "anon", why="permission denied")
+denied("interne functie _promo_code_state aanroepen", "select _promo_code_state('back-in-control',50,'X','m@test.be')", "anon", why="permission denied")
+denied("interne functie _pick_promotion als ingelogde klant", "select _pick_promotion('back-in-control',50,null,null)", "authenticated", USER, why="permission denied")
+
+print(" 3. Eén keer per klant; annuleren geeft vrij")
+reset(addp("PA", "percentage", 20, "back-in-control"))
+r = j(expect("eerste boeking met korting", bk(W3, "13:00", "Klant@Test.be"), "anon")); ok("  40", r["price"] == 40, r)
+r = j(expect("zelfde e-mail met spaties/hoofdletters, ander uur: geen tweede korting", bk(W3, "14:00", "  KLANT@test.be  "), "anon")); ok("  50, geen korting", (r["price"], r["discount"]) == (50, 0), r)
+denied("zelfde e-mail die de verwachte (lagere) prijs 40 probeert", bk(W3, "15:00", "klant@test.be", exp=40), "anon", why="prijs_gewijzigd:50")
+r = j(expect("ander e-mailadres krijgt de korting wel", bk(W3, "15:00", "ander@test.be"), "anon")); ok("  40", r["price"] == 40, r)
+out = expect("  per promotie maximaal één bevestigde boeking per e-mail", "select count(*) from (select lower(client_email) from public.bookings where promotion_id is not null and status='bevestigd' group by 1 having count(*)>1) x"); ok("  0 dubbele", out == "0", out)
+expect("admin annuleert de eerste (gekorte) boeking", "update public.bookings set status='geannuleerd' where client_email='klant@test.be' and discount_eur>0", "authenticated", ADMIN)
+r = j(expect("zelfde klant boekt opnieuw: korting weer beschikbaar", bk(W3, "16:00", "klant@test.be", exp=40), "anon")); ok("  40", r["price"] == 40, r)
+denied("admin kan de geannuleerde boeking niet 'terugzetten' naast de nieuwe gekorte (dubbel gebruik)", "update public.bookings set status='bevestigd' where client_email='klant@test.be' and status='geannuleerd'", "authenticated", ADMIN, why="bookings_promo_once_uidx")
+print("    gelijktijdig boeken (race) met dezelfde e-mail en promotie")
+reset(addp("PA", "percentage", 20, "back-in-control"))
+def sess(script): return sp.Popen(["psql", "-h", HOST, "-p", PORT, "-U", "claude", "-d", "t", "-At", "-q"], stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, text=True), script
+a, sa = sess(f"set role anon; begin; {bk(W4, '13:00', 'race@test.be')}; select pg_sleep(2); commit;")
+b2, sb = sess(f"set role anon; begin; {bk(W4, '17:00', 'race@test.be')}; commit;")
+a.stdin.write(sa); a.stdin.close(); time.sleep(0.8); b2.stdin.write(sb); b2.stdin.close()
+oa, ea = a.stdout.read(), a.stderr.read(); ob, eb = b2.stdout.read(), b2.stderr.read(); a.wait(); b2.wait()
+n = expect("  na de race", "select count(*) from public.bookings where promotion_id is not null and lower(client_email)='race@test.be' and status='bevestigd'")
+ok("  precies één gekorte boeking", n == "1", n)
+ok("  de tweede gelijktijdige poging werd geweigerd door de database", "promotie_al_gebruikt" in eb or "promotie_al_gebruikt" in ea, (ea[:120], eb[:120]))
+
+print(" 4. Nooit combineren")
+reset(addp("P20", "percentage", 20, "back-in-control") + addp("F15", "fixed", 15, "back-in-control") + addp("ALLE10", "percentage", 10, None) + addp("CODE", "percentage", 10, "back-in-control", "COMBO10"))
+r = j(expect("4 promoties tegelijk geldig, met code: één wint (vast 15 > 20 % = 10)", bk(W4, "13:00", "c1@test.be", code="COMBO10"), "anon"))
+ok("  korting 15, prijs 35 (niet 30, niet 20)", (r["discount"], r["price"], r["promotion"]) == (15, 35, "F15"), r)
+out = expect("  slechts één promotion_id op de boeking", "select promotion_title||'|'||discount_eur||'|'||price_eur from public.bookings where client_email='c1@test.be'"); ok("  F15|15|35", out == "F15|15.00|35.00", out)
+r = j(expect("quote toont dezelfde enkele promotie", "select get_price_quote('back-in-control','COMBO10')", "anon")); ok("  35", r["price"] == 35 and r["promotion"] == "F15", r)
+r = j(expect("zonder code ook één promotie", "select get_price_quote('back-in-control')", "anon")); ok("  35", r["price"] == 35, r)
+reset(addp("P20", "percentage", 20, "back-in-control", start=-1, end=10) + addp("P20b", "percentage", 20, "back-in-control", start=-1, end=10))
+r = j(expect("twee gelijke promoties: toch maar één toegepast (20 %, niet 40 %)", bk(W4, "14:00", "c2@test.be"), "anon")); ok("  40", r["price"] == 40, r)
+
+print(" 5. Promocode: exact + promotie verder geldig")
+reset(addp("Code", "percentage", 10, "higher-self", "WELKOM10") + addp("Verlopen", "percentage", 10, "higher-self", "OUD10", start=-10, end=-1) + addp("Later", "percentage", 10, "higher-self", "LATER10", start=3, end=9) + addp("Uit", "percentage", 10, "higher-self", "UIT10", active="false") + addp("Andere dienst", "percentage", 10, "mind-control", "MIND10"))
+st = lambda c, svc="higher-self": j(expect(f"quote {c!r}", f"select get_price_quote('{svc}', $c${c}$c$)", "anon"))["code_status"]
+for c, want in [("WELKOM10", "ok"), ("welkom10", "ok"), ("  WelKom10 ", "ok"), ("WELKOM1", "invalid"), ("WELKOM100", "invalid"), ("WELKOM-10", "invalid"), ("WELKOM1_", "invalid"), ("WELKOM%", "invalid"), ("%", "invalid"), ("W", "invalid"), ("OUD10", "invalid"), ("LATER10", "invalid"), ("UIT10", "invalid"), ("MIND10", "invalid")]:
+    ok(f"  code {c!r} -> {want}", st(c) == want, st(c))
+ok("  code geldt wel voor de eigen dienst", st("MIND10", "mind-control") == "ok")
+ok("  code op gratis intake -> invalid", st("WELKOM10", "intakegesprek") == "invalid")
+for c in ["WELKOM1", "OUD10", "LATER10", "UIT10", "MIND10", "%"]:
+    denied(f"  boeken met {c} geweigerd", bk(W5, "13:00", "e@test.be", svc="higher-self", code=c), "anon", why="ongeldige_code")
+out = expect("  na al die pogingen: niets geboekt", "select count(*) from public.bookings"); ok("  0", out == "0", out)
+r = j(expect("  exacte code (kleine letters) -> geboekt met 10 %", bk(W5, "13:00", "e@test.be", svc="higher-self", code="welkom10"), "anon")); ok("  67,50", r["price"] == 67.5, r)
+
+print(" 6/7. Bestaande boekingen zonder promotie en bestaande flow")
+reset()
+sql(f"insert into public.bookings(service_slug,service_name,price_eur,booking_date,start_time,end_time,blocked_until,client_name,client_email) values ('mind-control','Mind control',40,'{W5}','18:30','19:00','19:15','Oude klant','oud@test.be');")
+out = expect("oude boeking (zonder promotiegegevens): kolommen leeg/0", "select coalesce(promotion_id::text,'-')||'|'||discount_eur||'|'||price_eur from public.bookings"); ok("  -|0.00|40.00", out == "-|0.00|40.00", out)
+out = expect("bezoeker ziet het bezette blok in de beschikbaarheid", f"select start_time||'-'||blocked_until from get_booked_slots('{W5}','{W5}')", "anon"); ok("  18:30-19:15", out == "18:30:00-19:15:00", out)
+denied("dubbel boeken op een bezet moment (zonder promotie)", bk(W5, "18:30", "n@test.be", svc="mind-control"), "anon", why="tijdslot_bezet")
+denied("overlap met de buffer (19:00) geweigerd", bk(W5, "19:00", "n@test.be", svc="mind-control"), "anon", why="tijdslot_bezet")
+r = j(expect("vrij moment zonder promoties: gewone prijs, discount 0, normale prijs bewaard", bk(W5, "13:00", "n@test.be", svc="mind-control"), "anon")); ok("  40/0", (r["price"], r["discount"], r["list_price"], r["promotion"]) == (40, 0, 40, None), r)
+r = j(expect("aanroep met de oorspronkelijke 7 parameters", f"select book_appointment('mind-control','{W5}','14:00','Oud','o2@test.be','0470','nota')", "anon")); ok("  40", r["price"] == 40, r)
+out = expect("admin leest alle boekingen en kan annuleren", "update public.bookings set status='geannuleerd' where client_email='oud@test.be'; select count(*) from public.bookings", "authenticated", ADMIN); ok("  3 zichtbaar", out.endswith("3"), out)
+r = j(expect("na annuleren is het moment weer vrij", bk(W5, "18:30", "n2@test.be", svc="mind-control"), "anon")); ok("  boekbaar", r["price"] == 40, r)
+sql("update public.treatments set price_eur=40 where slug='mind-control'")
+denied("sluitingsdag blokkeert nog steeds", (lambda: (sql(f"insert into public.closures(date_from,date_to) values ('{(wed + datetime.timedelta(days=35)).isoformat()}','{(wed + datetime.timedelta(days=35)).isoformat()}')"), bk((wed + datetime.timedelta(days=35)).isoformat(), "13:00", "z@test.be"))[1])(), "anon", why="gesloten")
+denied("buiten openingsuren nog steeds geweigerd", bk(W5, "21:00", "z@test.be"), "anon", why="buiten_openingsuren")
+denied("te kort op voorhand nog steeds geweigerd", "begin; insert into public.opening_hours(dow,opens,closes) values (extract(dow from now() at time zone 'Europe/Brussels')::int,'00:00','23:30') on conflict (dow) do update set opens='00:00', closes='23:30'; set role anon; select book_appointment('mind-control',(now() at time zone 'Europe/Brussels')::date, to_char(date_trunc('hour', now() at time zone 'Europe/Brussels') + interval '30 min','HH24:MI')::time,'x','z@test.be'); rollback;", None, why="te_kort_op_voorhand")
+
 print("\n" + ("ALLES GESLAAGD" if not fails else f"{len(fails)} FOUT(EN): " + "; ".join(fails)))
 sys.exit(1 if fails else 0)
