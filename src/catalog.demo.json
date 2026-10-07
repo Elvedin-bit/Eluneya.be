@@ -60,7 +60,7 @@
    "short": "Warm, zacht en omhullend.",
    "description": "Een rustige signatuur van amber en vanille, voor wie een parfum draagt als een zachte omhelzing.\n\nDe geur opent helder en landt zacht op de huid.",
    "ingredients": "Alcohol denat., parfum, aqua, limonene, linalool, citral.",
-   "content": "50 ml",
+   "content": null,
    "type": "physical",
    "sku": "DEMO-SOFT-",
    "price": 89,
@@ -101,21 +101,35 @@
    },
    "variants": [
     {
+     "id": "ea789c76-927d-5cd9-b443-0787cef130e4",
+     "label": "15 ml",
+     "volume": 15,
+     "sku": "DEMO-SA-15",
+     "price": 29.0,
+     "available": true
+    },
+    {
      "id": "d0d2a7ef-a5f9-5429-9883-2fb9f3043e9b",
      "label": "30 ml",
-     "price": 59.0,
+     "volume": 30,
+     "sku": "DEMO-SA-30",
+     "price": 49.0,
      "available": true
     },
     {
      "id": "a7a807c6-94c4-527d-9303-676fd859d4a6",
      "label": "50 ml",
-     "price": null,
+     "volume": 50,
+     "sku": "DEMO-SA-50",
+     "price": 69.0,
      "available": true
     },
     {
-     "id": "6889ad25-6d86-54c5-b5c7-f44f34cd968a",
-     "label": "100 ml",
-     "price": 119.0,
+     "id": "32b5e91b-bd12-51fd-a9ea-40381c0beef6",
+     "label": "70 ml",
+     "volume": 70,
+     "sku": "DEMO-SA-70",
+     "price": 89.0,
      "available": false
     }
    ]
@@ -129,7 +143,7 @@
    "short": "Helder, bloemig en luchtig.",
    "description": "Jasmijn en roos in een lichte, frisse opening. Een geur voor lange lentedagen.",
    "ingredients": "Alcohol denat., parfum, aqua, limonene, linalool, citral.",
-   "content": "50 ml",
+   "content": null,
    "type": "physical",
    "sku": "DEMO-WHITE",
    "price": 79,
@@ -167,7 +181,24 @@
      ]
     }
    },
-   "variants": []
+   "variants": [
+    {
+     "id": "3464a026-47de-5f63-8b9d-2eb168da436e",
+     "label": "15 ml",
+     "volume": 15,
+     "sku": "DEMO-WP-15",
+     "price": 29.0,
+     "available": true
+    },
+    {
+     "id": "92446e4a-9665-533f-94b2-26a4a3235fd4",
+     "label": "70 ml",
+     "volume": 70,
+     "sku": "DEMO-WP-70",
+     "price": null,
+     "available": true
+    }
+   ]
   },
   {
    "id": "e1a66096-0b79-57a8-8b2e-1e676abcf598",

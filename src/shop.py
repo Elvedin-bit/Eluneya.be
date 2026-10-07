@@ -54,7 +54,7 @@ def fetch_catalog():
     rows = get("products?select=id,slug,category_id,brand_id,name,short_description,description,ingredients,content_label,product_type,"
                "sku,price_eur,compare_at_price_eur,sale_price_eur,sale_starts_at,sale_ends_at,availability,is_available,is_featured,"
                "sort_order,created_at,updated_at,product_images(url,alt,sort_order,is_primary),product_attributes(data),"
-               "product_variants(id,label,sku,price_eur,sort_order,is_available)&order=sort_order")
+               "product_variants(id,label,volume_ml,sku,price_eur,sort_order,is_available)&order=sort_order")
     return normalise(cats, brands, rows)
 
 
@@ -78,7 +78,8 @@ def normalise(cats, brands, rows):
             "sort": r["sort_order"], "created": r.get("created_at"), "updated": r.get("updated_at"),
             "images": [{"url": i["url"], "alt": i.get("alt")} for i in imgs],
             "attributes": attrs or {},
-            "variants": [{"id": v["id"], "label": v["label"], "price": float(v["price_eur"]) if v.get("price_eur") is not None else None,
+            "variants": [{"id": v["id"], "label": v["label"], "volume": float(v["volume_ml"]) if v.get("volume_ml") is not None else None,
+                          "sku": v.get("sku"), "price": float(v["price_eur"]) if v.get("price_eur") is not None else None,
                           "available": bool(v["is_available"])}
                          for v in sorted(r.get("product_variants") or [], key=lambda v: v["sort_order"])],
         })
@@ -160,13 +161,46 @@ def short_text(p, n=155):
 def status(p):
     """(css-klasse, tekst) voor beschikbaarheid."""
     a = p["availability"]
-    if a == "out_of_stock" or (not p["available"] and a == "in_stock"):
+    if a == "out_of_stock":
         return "out", "Uitverkocht"
     if a == "on_request":
         return "request", "Enkel op aanvraag"
+    if has_variants(p):   # de voorraad zit per variant: uitverkocht als geen enkele variant nog beschikbaar is
+        if not any(v["available"] for v in p["variants"]):
+            return "out", "Uitverkocht"
+    elif not p["available"] and a == "in_stock":
+        return "out", "Uitverkocht"
     if a == "preorder":
         return "preorder", "Voorbestellen"
     return "in", "Op voorraad"
+
+
+def has_variants(p):
+    return bool(p.get("variants"))
+
+
+def default_variant(p):
+    """De vooraf gekozen variant: de eerste beschikbare."""
+    return next((v for v in p.get("variants") or [] if v["available"]), None)
+
+
+def variant_price(p, v):
+    """Actuele prijs van een variant: eigen prijs, anders de (actie)prijs van het product."""
+    return v["price"] if v is not None and v.get("price") is not None else price_now(p)
+
+
+def sale_applies(p):
+    """Actieprijs geldt enkel voor varianten zonder eigen prijs."""
+    if not sale_active(p):
+        return False
+    return not has_variants(p) or any(v["available"] and v.get("price") is None for v in p["variants"])
+
+
+def from_price(p):
+    if not has_variants(p):
+        return price_now(p)
+    live = [v for v in p["variants"] if v["available"]] or p["variants"]
+    return min(variant_price(p, v) for v in live)
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +232,7 @@ def cart_link():
 # ---------------------------------------------------------------------------
 def badges(p):
     out = []
-    if sale_active(p):
+    if sale_applies(p):
         out.append(f'<span class="p-badge sale">−{round((1 - p["sale_price"] / p["price"]) * 100)}%</span>')
     cls, txt = status(p)
     if cls in ("out", "request", "preorder"):
@@ -206,8 +240,10 @@ def badges(p):
     return f'<span class="p-badges">{"".join(out)}</span>' if out else ""
 
 
-def price_html(p, big=False):
-    now = price_now(p)
+def price_html(p, big=False, v=None):
+    now = variant_price(p, v)
+    if v is not None and v.get("price") is not None:
+        return f'<p class="p-price{" big" if big else ""}"><strong class="p-now">{eur(now)}</strong></p>'
     if sale_active(p):
         old = f'<s class="p-was"><span class="visually-hidden">Normale prijs </span>{eur(p["price"])}</s> '
         return f'<p class="p-price{" big" if big else ""}">{old}<strong class="p-now"><span class="visually-hidden">Nu </span>{eur(now)}</strong></p>'
@@ -226,18 +262,43 @@ def media(p, cls="", eager=False):
             f'width="800" height="1000" {load}></div>')
 
 
+def card_price(p):
+    """Prijs op een productkaart: "vanaf" als de varianten verschillende prijzen hebben."""
+    if not has_variants(p):
+        return price_html(p)
+    live = [v for v in p["variants"] if v["available"]] or p["variants"]
+    prices = [variant_price(p, v) for v in live]
+    if min(prices) == max(prices):
+        return price_html(p, v=live[0])
+    return f'<p class="p-price"><span class="p-from">vanaf</span> <strong class="p-now">{eur(min(prices))}</strong></p>'
+
+
+def variants_html(p):
+    """Keuze van de inhoud op de productpagina (de eerste beschikbare staat voorgeselecteerd)."""
+    if not has_variants(p):
+        return ""
+    dv = default_variant(p)
+    opts = "".join(
+        f'<label class="variant-opt{"" if v["available"] else " is-out"}"><input type="radio" name="variant" value="{v["id"]}"'
+        f'{" checked" if dv and dv["id"] == v["id"] else ""}{"" if v["available"] else " disabled"}>'
+        f'<span class="v-name">{esc(v["label"])}</span><span class="v-price">{eur(variant_price(p, v)) if v["available"] else "Uitverkocht"}</span></label>'
+        for v in p["variants"])
+    return f'<fieldset class="variants" data-variants><legend>Inhoud</legend><div class="variant-grid">{opts}</div></fieldset>'
+
+
 def card(p, d=0):
     attrs = p.get("attributes") or {}
-    meta = " · ".join(x for x in [p.get("content"), attrs.get("fragrance_family")] if x)
+    sizes = " · ".join(v["label"] for v in p["variants"][:4]) if has_variants(p) else p.get("content")
+    meta = " · ".join(x for x in [sizes, attrs.get("fragrance_family")] if x)
     cls, _ = status(p)
-    return f"""<article class="p-card reveal{f' d{d}' if d else ''}" data-id="{p['id']}" data-cat="{esc(p['category'])}" data-brand="{esc(p.get('brand') or '')}" data-family="{esc(attrs.get('fragrance_family') or '')}" data-price="{price_now(p):.2f}" data-featured="{int(p['featured'])}" data-in="{int(cls in ('in', 'preorder'))}" data-name="{esc(p['name'].lower())}">
+    return f"""<article class="p-card reveal{f' d{d}' if d else ''}" data-id="{p['id']}" data-cat="{esc(p['category'])}" data-brand="{esc(p.get('brand') or '')}" data-family="{esc(attrs.get('fragrance_family') or '')}" data-price="{from_price(p):.2f}" data-featured="{int(p['featured'])}" data-in="{int(cls in ('in', 'preorder'))}" data-name="{esc(p['name'].lower())}">
   <a class="p-card-link" href="{url_of(p)}">
     <div class="p-media-wrap">{media(p, "ratio-portrait")}{badges(p)}</div>
     <div class="p-card-body">
       {f'<p class="p-brand">{esc(p["brand"])}</p>' if p.get('brand') else ''}
       <h3 class="p-name">{esc(p['name'])}</h3>
       {f'<p class="p-meta">{esc(meta)}</p>' if meta else ''}
-      {price_html(p)}
+      {card_price(p)}
     </div>
   </a>
 </article>"""
@@ -257,14 +318,13 @@ def breadcrumb_ld(domain, trail):
 def product_ld(p, domain):
     cls, _ = status(p)
     avail = {"in": "InStock", "out": "OutOfStock", "preorder": "PreOrder", "request": "LimitedAvailability"}[cls]
-    offer = {"@type": "Offer", "url": domain + url_of(p), "priceCurrency": "EUR", "price": f"{price_now(p):.2f}",
+    offer = {"@type": "Offer", "url": domain + url_of(p), "priceCurrency": "EUR", "price": f"{from_price(p):.2f}",
              "availability": "https://schema.org/" + avail, "itemCondition": "https://schema.org/NewCondition",
              "seller": {"@id": domain + "/#bedrijf"}}
     if sale_active(p) and p.get("sale_ends"):
         offer["priceValidUntil"] = p["sale_ends"][:10]
-    prices = [v["price"] for v in p.get("variants") or [] if v.get("price") is not None]
-    if prices:   # varianten met eigen prijs: prijsrange i.p.v. één prijs
-        prices += [price_now(p)] if any(v.get("price") is None for v in p["variants"]) else []
+    prices = [variant_price(p, v) for v in p.get("variants") or []]
+    if prices and (min(prices) != max(prices)):   # varianten met verschillende prijzen: prijsrange i.p.v. één prijs
         offer = {"@type": "AggregateOffer", "url": offer["url"], "priceCurrency": "EUR", "lowPrice": f"{min(prices):.2f}",
                  "highPrice": f"{max(prices):.2f}", "offerCount": len(p["variants"]), "availability": offer["availability"],
                  "itemCondition": offer["itemCondition"], "seller": offer["seller"]}
@@ -384,14 +444,10 @@ def product_page(p, wa_link):
     cls, stat_txt = status(p)
     cat = CATS.get(p["category"], {"name": "Shop", "slug": p["category"]})
     can_buy = cls in ("in", "preorder")
-    variants = [v for v in p.get("variants") or []]
-    var_html = ""
-    if variants:
-        var_html = ('<div class="field"><label for="p-variant">Inhoud</label><select class="select" id="p-variant" data-variant>'
-                    + "".join(f'<option value="{v["id"]}"{" disabled" if not v["available"] else ""}>{esc(v["label"])}'
-                              f'{" — " + eur(v["price"]) if v.get("price") is not None else ""}{" (uitverkocht)" if not v["available"] else ""}</option>'
-                              for v in variants) + "</select></div>")
-    facts = [("Inhoud", p.get("content")), ("Geurfamilie", attrs.get("fragrance_family")), ("Concentratie", attrs.get("concentration")),
+    var_html = variants_html(p)
+    dv = default_variant(p)
+    sizes_txt = ", ".join(v["label"] for v in p["variants"]) if has_variants(p) else p.get("content")
+    facts = [("Inhoud", sizes_txt), ("Geurfamilie", attrs.get("fragrance_family")), ("Concentratie", attrs.get("concentration")),
              ("Merk", p.get("brand")), ("Productcode", p.get("sku")), ("Categorie", cat["name"])]
     facts_html = "".join(f"<div><dt>{k}</dt><dd>{esc(v)}</dd></div>" for k, v in facts if v)
     if can_buy:
@@ -428,7 +484,7 @@ def product_page(p, wa_link):
         rel += f'<section class="section-tight" aria-labelledby="rel2"><div class="container"><h2 class="h-sub" id="rel2">Ook mooi</h2><div class="p-grid">{"".join(card(x, i) for i, x in enumerate(other))}</div></div></section>'
     im = image_of(p)
     meta = {
-        "title": f"{p['name']}{' ' + p['content'] if p.get('content') else ''}{' — ' + p['brand'] if p.get('brand') else ''} | Eluneya",
+        "title": f"{p['name']}{' ' + p['content'] if p.get('content') and not has_variants(p) else ''}{' — ' + p['brand'] if p.get('brand') else ''} | Eluneya",
         "description": short_text(p) or f"{p['name']} bij Eluneya in Wevelgem.",
         "styles": ["shop.css"], "og_type": "product",
         "extra_head": '\n  <script src="{BASE}assets/js/catalog.js" defer></script>\n  <script src="{BASE}assets/js/product.js" defer></script>',
@@ -447,8 +503,8 @@ def product_page(p, wa_link):
       <div class="pdp-info">
         <p class="eyebrow">{eyebrow}</p>
         <h1 class="h-display pdp-title" id="page-title">{esc(p['name'])}</h1>
-        {f'<p class="pdp-content">{esc(p["content"])}{" · " + esc(attrs["fragrance_family"]) if attrs.get("fragrance_family") else ""}</p>' if p.get('content') else ''}
-        <div class="pdp-price" data-price-block>{price_html(p, big=True)}</div>
+        {f'<p class="pdp-content">{esc(p["content"])}{" · " + esc(attrs["fragrance_family"]) if attrs.get("fragrance_family") else ""}</p>' if p.get('content') and not has_variants(p) else (f'<p class="pdp-content">{esc(attrs["fragrance_family"])}</p>' if attrs.get("fragrance_family") else '')}
+        <div class="pdp-price" data-price-block>{price_html(p, big=True, v=dv)}</div>
         <p class="pdp-status is-{cls}" data-status><span class="dot" aria-hidden="true"></span>{stat_txt}</p>
         {f'<p class="pdp-short">{esc(p["short"])}</p>' if p.get('short') else ''}
         {notes_line(p)}

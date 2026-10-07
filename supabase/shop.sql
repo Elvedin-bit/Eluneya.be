@@ -198,12 +198,18 @@ create table if not exists public.product_images (
 create index if not exists product_images_product_idx on public.product_images (product_id, sort_order);
 create unique index if not exists product_images_primary_uidx on public.product_images (product_id) where is_primary;
 
--- Varianten (bv. 30 ml / 50 ml / 100 ml). Fundering: de winkelmand en place_order() kennen ze al;
--- de admin beheert ze pas als Aida varianten nodig heeft. Een variant zonder eigen prijs erft de productprijs.
+-- Varianten: per product bepaalt Aida zelf welke formaten of uitvoeringen er zijn (bv. enkel 15 ml en 70 ml);
+-- er zijn geen vaste formaten. Elke variant heeft een eigen naam, inhoud, SKU, prijs, voorraad en status.
+--   label      wat de klant ziet ("50 ml", "Reisformaat", …)
+--   volume_ml  de inhoud als getal (optioneel; voor sorteren/filteren en voor wie het label vrij houdt)
+--   price_eur  eigen prijs; leeg = de productprijs (en dan geldt ook de actieprijs van het product)
+--   stock_qty  leeg = voorraad niet bijgehouden; anders het aantal (0 = uitverkocht)
+-- Heeft een product varianten, dan wordt de voorraad per variant bijgehouden en is een variant verplicht bij het bestellen.
 create table if not exists public.product_variants (
   id          uuid primary key default gen_random_uuid(),
   product_id  uuid not null references public.products(id) on delete cascade,
   label       text not null check (char_length(btrim(label)) between 1 and 60),
+  volume_ml   numeric(7,1) check (volume_ml is null or (volume_ml > 0 and volume_ml <= 100000)),
   sku         text check (sku is null or char_length(sku) between 1 and 60),
   price_eur   numeric(8,2) check (price_eur is null or (price_eur >= 0 and price_eur <= 10000)),
   stock_qty   integer check (stock_qty is null or (stock_qty >= 0 and stock_qty <= 100000)),   -- null = voorraad niet bijgehouden
@@ -212,7 +218,10 @@ create table if not exists public.product_variants (
   created_at  timestamptz not null default now(),
   is_available boolean generated always as (is_active and (stock_qty is null or stock_qty > 0)) stored
 );
+alter table public.product_variants add column if not exists volume_ml numeric(7,1)
+  check (volume_ml is null or (volume_ml > 0 and volume_ml <= 100000));   -- voor databases waar de tabel al bestond
 create unique index if not exists product_variants_sku_uidx on public.product_variants (lower(sku)) where sku is not null;
+create unique index if not exists product_variants_label_uidx on public.product_variants (product_id, lower(btrim(label)));
 create index if not exists product_variants_product_idx on public.product_variants (product_id, sort_order);
 
 -- -------------------------------------------------------------- bestellingen ---
@@ -264,8 +273,11 @@ create table if not exists public.order_items (
   list_price_eur numeric(8,2) not null check (list_price_eur >= 0),   -- normale prijs per stuk
   quantity       integer not null check (quantity between 1 and 50),
   line_total_eur numeric(9,2) not null check (line_total_eur >= 0),
-  restocked      boolean not null default false                      -- voorraad al teruggezet na annulatie
+  restocked      boolean not null default false,                     -- voorraad al teruggezet na annulatie
+  stock_effect   text check (stock_effect in ('product', 'variant'))  -- waar de voorraad werd afgeboekt (leeg = niet bijgehouden)
 );
+alter table public.order_items add column if not exists stock_effect text
+  check (stock_effect in ('product', 'variant'));   -- voor databases waar de tabel al bestond
 create index if not exists order_items_order_idx on public.order_items (order_id);
 
 -- Voorraad terugzetten bij annulatie (eenmalig per regel); een geannuleerde bestelling blijft geannuleerd.
@@ -281,13 +293,14 @@ begin
       raise exception 'geannuleerd_is_definitief' using errcode = '23514';
     end if;
     if new.status = 'geannuleerd' then
-      update public.products p set stock_qty = p.stock_qty + i.quantity
+      -- Terug naar waar het afgeboekt werd (stock_effect), ook als de variant of het product intussen anders is ingesteld.
+      -- Bestaat de variant of het product niet meer, dan is er niets om bij te werken.
+      update public.products p set stock_qty = least(p.stock_qty + i.quantity, 100000)
         from public.order_items i
-       where i.order_id = new.id and not i.restocked and i.variant_id is null
-         and p.id = i.product_id and p.track_stock;
-      update public.product_variants v set stock_qty = v.stock_qty + i.quantity
+       where i.order_id = new.id and not i.restocked and i.stock_effect = 'product' and p.id = i.product_id;
+      update public.product_variants v set stock_qty = least(v.stock_qty + i.quantity, 100000)
         from public.order_items i
-       where i.order_id = new.id and not i.restocked and i.variant_id is not null
+       where i.order_id = new.id and not i.restocked and i.stock_effect = 'variant'
          and v.id = i.variant_id and v.stock_qty is not null;
       update public.order_items set restocked = true where order_id = new.id and not restocked;
     end if;
@@ -326,7 +339,7 @@ grant select (id, slug, category_id, brand_id, name, short_description, descript
   on public.products to anon;
 grant select (product_id, data) on public.product_attributes to anon;
 grant select (id, product_id, url, alt, sort_order, is_primary) on public.product_images to anon;
-grant select (id, product_id, label, sku, price_eur, sort_order, is_available) on public.product_variants to anon;
+grant select (id, product_id, label, volume_ml, sku, price_eur, sort_order, is_available) on public.product_variants to anon;
 
 drop policy if exists "publiek leest actieve categorieen" on public.product_categories;
 create policy "publiek leest actieve categorieen" on public.product_categories for select to anon
@@ -443,6 +456,7 @@ declare
   v_open       integer;
   v_lines      jsonb := '[]'::jsonb;
   v_has_var    boolean;
+  v_effect     text;
 begin
   if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) not between 1 and c_max_lines then
     raise exception 'lege_bestelling';
@@ -486,11 +500,19 @@ begin
       raise exception 'product_niet_beschikbaar:%', v_prod.name;
     end if;
 
-    select exists (select 1 from public.product_variants x where x.product_id = v_prod.id and x.is_active) into v_has_var;
-    if v_has_var and r.variant_id is null then raise exception 'kies_variant:%', v_prod.name; end if;
+    -- Heeft het product varianten (actief of niet), dan is een actieve variant verplicht; zijn ze allemaal uitgeschakeld,
+    -- dan is het product niet bestelbaar (en valt het dus niet terug op de productprijs).
+    select exists (select 1 from public.product_variants x where x.product_id = v_prod.id) into v_has_var;
+    if v_has_var and r.variant_id is null then
+      if exists (select 1 from public.product_variants x where x.product_id = v_prod.id and x.is_active) then
+        raise exception 'kies_variant:%', v_prod.name;
+      end if;
+      raise exception 'product_niet_beschikbaar:%', v_prod.name;
+    end if;
 
     v_unit := public._product_price(v_prod);
     v_list := v_prod.price_eur;
+    v_effect := null;
 
     if r.variant_id is not null then
       select * into v_var from public.product_variants
@@ -499,17 +521,19 @@ begin
       if v_var.stock_qty is not null then
         if v_var.stock_qty < r.qty then raise exception 'onvoldoende_voorraad:%', v_prod.name; end if;
         update public.product_variants set stock_qty = stock_qty - r.qty where id = v_var.id;
+        v_effect := 'variant';
       end if;
       if v_var.price_eur is not null then v_unit := v_var.price_eur; v_list := v_var.price_eur; end if;
     elsif v_prod.track_stock and v_prod.availability = 'in_stock' then
       if v_prod.stock_qty < r.qty then raise exception 'onvoldoende_voorraad:%', v_prod.name; end if;
       update public.products set stock_qty = stock_qty - r.qty where id = v_prod.id;
+      v_effect := 'product';
     end if;
 
     v_lines := v_lines || jsonb_build_array(jsonb_build_object(
       'product_id', v_prod.id, 'variant_id', r.variant_id, 'qty', r.qty, 'unit', v_unit, 'list', v_list,
       'pname', v_prod.name, 'vlabel', case when r.variant_id is not null then v_var.label end,
-      'psku', coalesce(case when r.variant_id is not null then v_var.sku end, v_prod.sku)));
+      'psku', coalesce(case when r.variant_id is not null then v_var.sku end, v_prod.sku), 'effect', v_effect));
     v_subtotal := v_subtotal + v_list * r.qty;
     v_total    := v_total    + v_unit * r.qty;
   end loop;
@@ -529,10 +553,10 @@ begin
   end;
 
   insert into public.order_items (order_id, product_id, variant_id, sku, product_name, variant_label,
-                                  unit_price_eur, list_price_eur, quantity, line_total_eur)
-  select v_order.id, l.product_id, l.variant_id, l.psku, l.pname, l.vlabel, l.unit, l.list, l.qty, l.unit * l.qty
+                                  unit_price_eur, list_price_eur, quantity, line_total_eur, stock_effect)
+  select v_order.id, l.product_id, l.variant_id, l.psku, l.pname, l.vlabel, l.unit, l.list, l.qty, l.unit * l.qty, l.effect
     from jsonb_to_recordset(v_lines) as l(product_id uuid, variant_id uuid, psku text, pname text, vlabel text,
-                                          unit numeric, list numeric, qty integer);
+                                          unit numeric, list numeric, qty integer, effect text);
 
   return json_build_object(
     'id', v_order.id,

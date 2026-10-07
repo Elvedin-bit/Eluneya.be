@@ -216,6 +216,71 @@ for (let i = 1; i <= 3; i++) await ok(`max. openstaande aanvragen per e-mail (${
 await denied('vierde openstaande aanvraag geweigerd', order(items([F, 1]), { email: 'SPAM@test.be' }), 'anon', null, 'te_veel_bestellingen');
 await denied('anon kan place_order-functie _product_price niet misbruiken', 'select public._product_price(p) from public.products p limit 1', 'anon', null, 'permission denied');
 
+console.log('Varianten');
+// Product met actieprijs en drie varianten: A15 erft de (actie)prijs en heeft voorraad 2, B70 heeft een eigen prijs en geen voorraadbeheer, C30 is uitgeschakeld.
+await ins('i-multi', 'I Multi', parfums, ', track_stock, stock_qty, sale_price_eur|80|, true, 7, 60');
+const I = await pid('i-multi');
+await db.exec(`insert into public.product_variants (product_id, label, volume_ml, sku, price_eur, stock_qty, sort_order, is_active) values
+  ('${I}', '15 ml', 15, 'I-15', null, 2, 1, true), ('${I}', '70 ml', 70, 'I-70', 100, null, 2, true), ('${I}', '30 ml', 30, 'I-30', 70, 5, 3, false)`);
+const VI15 = (await db.query(`select id from public.product_variants where sku='I-15'`)).rows[0].id;
+const VI70 = (await db.query(`select id from public.product_variants where sku='I-70'`)).rows[0].id;
+const VI30 = (await db.query(`select id from public.product_variants where sku='I-30'`)).rows[0].id;
+const vstock = async (sku) => (await db.query(`select stock_qty from public.product_variants where sku='${sku}'`)).rows[0].stock_qty;
+const pstock = async (slug) => (await db.query(`select stock_qty from public.products where slug='${slug}'`)).rows[0].stock_qty;
+await ok('anon ziet volume_ml, label en SKU van actieve varianten (niet de uitgeschakelde)', `select label, volume_ml, sku from public.product_variants where product_id='${I}' order by sort_order`, 'anon', null,
+  (r) => r.rows.map((x) => `${x.label}:${Number(x.volume_ml)}:${x.sku}`).join('|') === '15 ml:15:I-15|70 ml:70:I-70');
+await denied('anon kan voorraad van varianten niet lezen', `select stock_qty from public.product_variants where product_id='${I}'`, 'anon', null, 'permission denied');
+await denied('volume 0 geweigerd', `insert into public.product_variants (product_id,label,volume_ml) values ('${F}','Nul',0)`, 'authenticated', ADMIN, 'volume_ml');
+await denied('negatief volume geweigerd', `insert into public.product_variants (product_id,label,volume_ml) values ('${F}','Min',-5)`, 'authenticated', ADMIN, 'volume_ml');
+await denied('dubbele variantnaam bij hetzelfde product geweigerd (hoofdletter/spatie-ongevoelig)', `insert into public.product_variants (product_id,label) values ('${I}',' 15 ML ')`, 'authenticated', ADMIN, 'product_variants_label_uidx');
+await ok('dezelfde variantnaam bij een ander product mag wel', `insert into public.product_variants (product_id,label) values ('${F}','15 ml') returning id`, 'authenticated', ADMIN);
+await denied('dubbele variant-SKU geweigerd', `insert into public.product_variants (product_id,label,sku) values ('${F}','Extra','i-15')`, 'authenticated', ADMIN, 'product_variants_sku_uidx');
+await denied('variantprijs boven 10.000 geweigerd', `insert into public.product_variants (product_id,label,price_eur) values ('${F}','Duur',20000)`, 'authenticated', ADMIN, 'price_eur');
+await denied('negatieve variantvoorraad geweigerd', `insert into public.product_variants (product_id,label,stock_qty) values ('${F}','Neg',-1)`, 'authenticated', ADMIN, 'stock_qty');
+await denied('niet-admin kan geen variant toevoegen', `insert into public.product_variants (product_id,label) values ('${F}','Zomaar')`, 'authenticated', OTHER, 'row-level security');
+await db.exec(`delete from public.product_variants where product_id='${F}'`); // opruimen (F is het e-book)
+
+await denied('geen variant gekozen bij product met varianten', order(items([I, 1]), { email: 'v1@test.be' }), 'anon', null, 'kies_variant');
+await denied('uitgeschakelde variant niet bestelbaar', order(items([I, 1, VI30]), { email: 'v1@test.be' }), 'anon', null, 'product_niet_beschikbaar');
+const rv = await ok('variant zonder eigen prijs erft de actieprijs van het product (60)', order(items([I, 1, VI15]), { email: 'v2@test.be', expected: 60 }), 'anon', null, (r) => Number(r.rows[0].o.total) === 60);
+await ok('variant met eigen prijs negeert de actieprijs (100)', order(items([I, 2, VI70]), { email: 'v3@test.be', expected: 200 }), 'anon', null, (r) => Number(r.rows[0].o.total) === 200);
+check('voorraad van variant 15 ml verlaagd 2 → 1', (await vstock('I-15')) === 1);
+check('productvoorraad onaangeroerd bij varianten (7)', (await pstock('i-multi')) === 7);
+check('variant 70 ml zonder voorraadbeheer blijft leeg (null)', (await vstock('I-70')) === null);
+const ri = (await db.query(`select variant_id, variant_label, sku, unit_price_eur, list_price_eur, stock_effect from public.order_items where order_id='${rv.rows[0].o.id}'`)).rows[0];
+check('order_items bewaart variant (id, label, SKU, prijzen, stock_effect)', ri.variant_id === VI15 && ri.variant_label === '15 ml' && ri.sku === 'I-15' && Number(ri.unit_price_eur) === 60 && Number(ri.list_price_eur) === 80 && ri.stock_effect === 'variant', JSON.stringify(ri));
+check('variant zonder voorraadbeheer: geen stock_effect', (await db.query(`select stock_effect from public.order_items where variant_id='${VI70}'`)).rows[0].stock_effect === null);
+await ok('twee varianten van hetzelfde product = twee orderregels', order(items([I, 1, VI15], [I, 1, VI70]), { email: 'v4@test.be', expected: 160 }), 'anon', null, (r) => r.rows[0].o.items.length === 2 && Number(r.rows[0].o.total) === 160);
+check('15 ml voorraad nu 0', (await vstock('I-15')) === 0);
+await denied('variant 15 ml uitverkocht', order(items([I, 1, VI15]), { email: 'v5@test.be' }), 'anon', null, 'onvoldoende_voorraad');
+await ok('anon ziet 15 ml nu als niet beschikbaar', `select is_available from public.product_variants where sku='I-15'`, 'anon', null, (r) => r.rows[0].is_available === false);
+await denied('variant meegeven bij product zonder varianten geweigerd', order(items([F, 1, VI15]), { email: 'v5@test.be' }), 'anon', null, 'product_niet_beschikbaar');
+// annuleren zet de variantvoorraad terug, niet de productvoorraad
+const vOrders = (await db.query(`select distinct o.id from public.orders o join public.order_items i on i.order_id=o.id where i.variant_id='${VI15}'`)).rows.map((x) => x.id);
+for (const id of vOrders) await ok('admin annuleert order met variant', `update public.orders set status='geannuleerd' where id='${id}' returning id`, 'authenticated', ADMIN);
+check('annulering zet 15 ml terug (0 → 2)', (await vstock('I-15')) === 2, String(await vstock('I-15')));
+check('productvoorraad blijft 7 na annulering', (await pstock('i-multi')) === 7);
+// verwijderde variant: annulering mag de productvoorraad niet ophogen
+await db.exec(`insert into public.products (slug,name,category_id,price_eur,is_active,track_stock,stock_qty) values ('k-del','K Del','${parfums}',50,true,true,7)`);
+const K = await pid('k-del');
+await db.exec(`insert into public.product_variants (product_id,label,stock_qty) values ('${K}','Weg',3)`);
+const VK = (await db.query(`select id from public.product_variants where product_id='${K}'`)).rows[0].id;
+const rk = await ok('order op variant van K (voorraad 3 → 1)', order(items([K, 2, VK]), { email: 'v6@test.be' }), 'anon', null);
+await db.exec(`delete from public.product_variants where id='${VK}'`);
+await ok('admin annuleert order van verwijderde variant', `update public.orders set status='geannuleerd' where id='${rk.rows[0].o.id}' returning id`, 'authenticated', ADMIN);
+check('productvoorraad van K blijft 7 (geen foutieve herstelling)', (await pstock('k-del')) === 7, String(await pstock('k-del')));
+// product waarvan alle varianten uitgeschakeld zijn is niet bestelbaar (geen terugval op productprijs)
+await db.exec(`insert into public.products (slug,name,category_id,price_eur,is_active) values ('l-alles-uit','L Alles uit','${parfums}',50,true)`);
+const L = await pid('l-alles-uit');
+await db.exec(`insert into public.product_variants (product_id,label,is_active) values ('${L}','Uit',false)`);
+await denied('product met enkel uitgeschakelde varianten niet bestelbaar', order(items([L, 1]), { email: 'v7@test.be' }), 'anon', null, 'product_niet_beschikbaar');
+// combinatie in één bestelling: product met productvoorraad + variant
+const before = await stock();
+const rm = await ok('gemengde bestelling (productvoorraad + variant + zonder voorraad)', order(items([A, 1], [I, 1, VI70], [F, 1]), { email: 'v8@test.be', expected: 60 + 100 + 15 }), 'anon', null, (r) => Number(r.rows[0].o.total) === 175);
+check('gemengde bestelling verlaagt A met 1', (await stock()) === before - 1);
+await ok('gemengde bestelling annuleren', `update public.orders set status='geannuleerd' where id='${rm.rows[0].o.id}' returning id`, 'authenticated', ADMIN);
+check('annulering herstelt A en laat de rest ongemoeid', (await stock()) === before && (await vstock('I-70')) === null && (await pstock('i-multi')) === 7);
+
 console.log('Beheer van bestellingen');
 await ok('admin ziet bestelling + regels', `select (select count(*) from public.orders)::int o, (select count(*) from public.order_items)::int i`, 'authenticated', ADMIN, (r) => r.rows[0].o >= 5 && r.rows[0].i >= 5);
 await ok('admin wijzigt status en betaalstatus', `update public.orders set status='in_behandeling', payment_status='betaald', payment_provider='contant', admin_notes='ok' where id='${oid}' returning id`, 'authenticated', ADMIN, (r) => r.rows.length === 1);
@@ -237,7 +302,7 @@ let rerun = null;
 try { await db.exec(shopSql); await db.exec(shopSql); } catch (e) { rerun = e.message; }
 check('shop.sql twee keer opnieuw uitvoeren geeft geen fout', rerun === null, rerun || '');
 check('aangepaste categorienaam blijft behouden', (await db.query(`select name from public.product_categories where slug='parfums'`)).rows[0].name === 'Parfums & geuren');
-check('gegevens blijven behouden na herhaling', (await db.query('select count(*)::int c from public.products')).rows[0].c === 8);
+check('gegevens blijven behouden na herhaling', (await db.query('select count(*)::int c from public.products')).rows[0].c === 11);
 await denied('na herhaling blijft anon geblokkeerd op orders', 'select * from public.orders', 'anon', null, 'permission denied');
 await denied('na herhaling blijft stock_qty privé', 'select stock_qty from public.products', 'anon', null, 'permission denied');
 

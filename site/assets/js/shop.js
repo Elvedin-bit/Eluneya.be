@@ -47,15 +47,25 @@
   }
 
   /* ---------- kaart ---------- */
+  // actiebadge enkel als de actieprijs ook echt geldt: niet als elke variant een eigen prijs heeft
+  function saleApplies(p) {
+    return SHOP.saleActive(p) && (!SHOP.hasVariants(p) || p.variants.some(function (v) { return v.available && v.price == null; }));
+  }
+  function minPrice(p) {
+    if (!SHOP.hasVariants(p)) { return SHOP.priceNow(p); }
+    var live = p.variants.filter(function (v) { return v.available; });
+    return Math.min.apply(null, (live.length ? live : p.variants).map(function (v) { return SHOP.priceNow(p, v); }));
+  }
   function badges(p) {
     var out = '', st = SHOP.status(p);
-    if (SHOP.saleActive(p)) { out += '<span class="p-badge sale">−' + Math.round((1 - p.sale_price / p.price) * 100) + '%</span>'; }
+    if (saleApplies(p)) { out += '<span class="p-badge sale">−' + Math.round((1 - p.sale_price / p.price) * 100) + '%</span>'; }
     if (st.cls === 'out' || st.cls === 'request' || st.cls === 'preorder') { out += '<span class="p-badge ' + st.cls + '">' + st.text + '</span>'; }
     return out ? '<span class="p-badges">' + out + '</span>' : '';
   }
   function card(p, i) {
     var attrs = p.attributes || {}, st = SHOP.status(p);
-    var meta = [p.content, attrs.fragrance_family].filter(Boolean).join(' · ');
+    var sizes = SHOP.hasVariants(p) ? p.variants.map(function (v) { return v.label; }).slice(0, 4).join(' · ') : p.content;
+    var meta = [sizes, attrs.fragrance_family].filter(Boolean).join(' · ');
     var im = p.images && p.images[0];
     var media = im
       ? '<div class="p-media ratio-portrait"><img src="' + esc(im.url) + '" alt="' + esc(im.alt || p.name) + '" width="800" height="1000" loading="lazy" decoding="async"></div>'
@@ -64,7 +74,7 @@
       '<a class="p-card-link" href="/shop/' + esc(p.category) + '/' + esc(p.slug) + '/"><div class="p-media-wrap">' + media + badges(p) + '</div>' +
       '<div class="p-card-body">' + (p.brand ? '<p class="p-brand">' + esc(p.brand) + '</p>' : '') +
       '<h3 class="p-name">' + esc(p.name) + '</h3>' + (meta ? '<p class="p-meta">' + esc(meta) + '</p>' : '') +
-      SHOP.priceHtml(p, null, false) + '</div></a></article>';
+      SHOP.cardPriceHtml(p) + '</div></a></article>';
   }
 
   /* ---------- filteren en sorteren ---------- */
@@ -86,8 +96,8 @@
     var by = {
       featured: function (a, b) { return (b.featured - a.featured) || (a.sort - b.sort) || a.name.localeCompare(b.name, 'nl'); },
       'new': function (a, b) { return String(b.created || '').localeCompare(String(a.created || '')); },
-      'price-asc': function (a, b) { return SHOP.priceNow(a) - SHOP.priceNow(b); },
-      'price-desc': function (a, b) { return SHOP.priceNow(b) - SHOP.priceNow(a); },
+      'price-asc': function (a, b) { return minPrice(a) - minPrice(b); },
+      'price-desc': function (a, b) { return minPrice(b) - minPrice(a); },
       name: function (a, b) { return a.name.localeCompare(b.name, 'nl'); }
     };
     return list.sort(by[state.sort] || by.featured);

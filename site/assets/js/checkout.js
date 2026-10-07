@@ -44,6 +44,7 @@
         var key = l.id + '|' + (l.v || ''), p = byId[l.id];
         if (!p) { state.notes[key] = 'Dit product is niet meer beschikbaar.'; state.blocked = true; return; }
         var v = (p.variants || []).filter(function (x) { return x.id === l.v; })[0] || null;
+        if (SHOP.hasVariants(p) && !l.v) { state.notes[key] = 'Kies de gewenste inhoud op de productpagina.'; state.blocked = true; return; }
         if (!SHOP.status(p).buy || (l.v && (!v || !v.available))) { state.notes[key] = 'Momenteel niet beschikbaar.'; state.blocked = true; return; }
         var unit = SHOP.priceNow(p, v), list = SHOP.listPrice(p, v);
         if (Math.abs(unit - l.unit) > 0.004) {

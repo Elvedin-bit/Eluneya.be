@@ -60,11 +60,8 @@
       return '<button type="button" data-src="' + esc(i.url) + '" data-alt="' + esc(i.alt || p.name) + '" aria-label="Foto ' + (k + 1) + '"' + (k === 0 ? ' aria-current="true"' : '') +
         '><img src="' + esc(i.url) + '" alt="" width="96" height="120" loading="lazy"></button>';
     }).join('') + '</div>' : '';
-    var variants = (p.variants || []).length ? '<div class="field"><label for="p-variant">Inhoud</label><select class="select" id="p-variant" data-variant>' + p.variants.map(function (v) {
-      return '<option value="' + esc(v.id) + '"' + (v.available ? '' : ' disabled') + '>' + esc(v.label) + (v.price != null ? ' — ' + fmt(v.price) : '') + (v.available ? '' : ' (uitverkocht)') + '</option>';
-    }).join('') + '</select></div>' : '';
     var buy = st.buy
-      ? '<div class="buy" data-buy>' + variants + '<div class="buy-row"><div class="qty" role="group" aria-label="Aantal"><button type="button" data-qty-minus aria-label="Minder">−</button>' +
+      ? '<div class="buy" data-buy>' + SHOP.variantsHtml(p) + '<div class="buy-row"><div class="qty" role="group" aria-label="Aantal"><button type="button" data-qty-minus aria-label="Minder">−</button>' +
         '<input type="number" id="p-qty" value="1" min="1" max="10" inputmode="numeric" aria-label="Aantal"><button type="button" data-qty-plus aria-label="Meer">+</button></div>' +
         '<button class="btn btn-dark buy-btn" type="button" data-add>Toevoegen aan winkelmand</button></div><p class="buy-msg" role="status" aria-live="polite" data-msg></p></div>'
       : '<div class="buy"><p class="buy-msg is-info">' + (st.cls === 'request' ? 'Dit product is enkel op aanvraag beschikbaar.' : 'Momenteel uitverkocht.') + '</p></div>';
@@ -94,14 +91,15 @@
     var statusEl = root.querySelector('[data-status]');
     var buy = root.querySelector('[data-buy]');
     var qty = document.getElementById('p-qty');
-    var variantSel = document.getElementById('p-variant');
+    var variantGroup = root.querySelector('[data-variants]');
     var msg = root.querySelector('[data-msg]');
     var addBtn = root.querySelector('[data-add]');
     var toast;
 
     function variant() {
-      if (!variantSel) { return null; }
-      return (product.variants || []).filter(function (v) { return v.id === variantSel.value; })[0] || null;
+      if (!variantGroup) { return null; }
+      var c = variantGroup.querySelector('input[name="variant"]:checked');
+      return c ? (product.variants || []).filter(function (v) { return v.id === c.value; })[0] || null : null;
     }
     function say(text, cls) { if (msg) { msg.textContent = text || ''; msg.className = 'buy-msg' + (cls ? ' ' + cls : ''); } }
 
@@ -115,17 +113,15 @@
         statusEl.innerHTML = '<span class="dot" aria-hidden="true"></span>' + st.text;
       }
       if (buy && addBtn) {
-        var blocked = !st.buy || (v && !v.available);
+        var blocked = !st.buy || (variantGroup && (!v || !v.available));
         addBtn.disabled = blocked;
         addBtn.setAttribute('aria-disabled', String(blocked));
-        if (blocked) { say(v && !v.available ? 'Deze inhoud is momenteel uitverkocht.' : st.text, 'is-info'); }
+        if (blocked) { say(variantGroup && !v && st.buy ? 'Kies eerst de gewenste inhoud.' : v && !v.available ? 'Deze inhoud is momenteel uitverkocht.' : st.text, 'is-info'); }
         else if (msg && /uitverkocht|aanvraag/i.test(msg.textContent)) { say(''); }
       }
     }
-    if (variantSel) {
-      var firstOk = (product.variants || []).filter(function (v) { return v.available; })[0];
-      if (firstOk) { variantSel.value = firstOk.id; }
-      variantSel.addEventListener('change', function () { say(''); paint(); });
+    if (variantGroup) {
+      variantGroup.addEventListener('change', function () { say(''); paint(); });
     }
 
     /* galerij */
@@ -162,7 +158,7 @@
     if (addBtn) {
       addBtn.addEventListener('click', function () {
         var v = variant(), st = SHOP.status(product);
-        if (!st.buy || (v && !v.available)) { return; }
+        if (!st.buy || (variantGroup && (!v || !v.available))) { return; }
         var im = product.images && product.images[0];
         var ok = CART.add({
           id: product.id, v: v ? v.id : null, name: product.name, slug: product.slug, cat: product.category,
@@ -181,9 +177,17 @@
     if (SHOP.live && !root.hasAttribute('data-live-done')) {
       SHOP.fetchProducts('id=eq.' + encodeURIComponent(id)).then(function (rows) {
         if (!rows[0]) { return; }
-        var keep = variantSel && variantSel.value;
+        var cur = variant();
         product = Object.assign({}, product, rows[0], { images: product.images.length ? product.images : rows[0].images });
-        if (variantSel && keep) { variantSel.value = keep; }
+        if (variantGroup) { // opties opnieuw opbouwen met actuele prijzen/voorraad; de keuze van de klant blijft behouden
+          var fresh = SHOP.variantsHtml(product), tmp = document.createElement('div'); tmp.innerHTML = fresh;
+          var nf = tmp.firstElementChild;
+          if (nf) {
+            variantGroup.innerHTML = nf.innerHTML;
+            var keep = cur && variantGroup.querySelector('input[value="' + cur.id + '"]:not(:disabled)');
+            if (keep) { keep.checked = true; }
+          }
+        }
         paint();
       }).catch(function () { /* statische gegevens blijven staan */ });
     }

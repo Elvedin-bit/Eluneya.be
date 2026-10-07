@@ -90,12 +90,40 @@
     return saleActive(p) ? p.sale_price : p.price;
   }
   function listPrice(p, variant) { return variant && variant.price != null ? variant.price : p.price; }
+  /* Heeft een product varianten (de database toont publiek enkel actieve), dan bepalen die de voorraad:
+     het product is uitverkocht als geen enkele variant nog beschikbaar is. */
+  function hasVariants(p) { return !!(p.variants && p.variants.length); }
   function status(p) {
     var a = p.availability;
-    if (a === 'out_of_stock' || (!p.available && a === 'in_stock')) { return { cls: 'out', text: 'Uitverkocht', buy: false }; }
+    if (a === 'out_of_stock') { return { cls: 'out', text: 'Uitverkocht', buy: false }; }
     if (a === 'on_request') { return { cls: 'request', text: 'Enkel op aanvraag', buy: false }; }
+    if (hasVariants(p)) {
+      if (!p.variants.some(function (v) { return v.available; })) { return { cls: 'out', text: 'Uitverkocht', buy: false }; }
+    } else if (!p.available && a === 'in_stock') { return { cls: 'out', text: 'Uitverkocht', buy: false }; }
     if (a === 'preorder') { return { cls: 'preorder', text: 'Voorbestellen', buy: true }; }
     return { cls: 'in', text: 'Op voorraad', buy: true };
+  }
+  function defaultVariant(p) { // de variant die vooraf gekozen is: de eerste beschikbare
+    return (p.variants || []).filter(function (v) { return v.available; })[0] || null;
+  }
+  /* Prijs op een productkaart: "vanaf" als de varianten verschillende prijzen hebben. */
+  function cardPriceHtml(p) {
+    if (!hasVariants(p)) { return priceHtml(p, null, false); }
+    var shown = p.variants.filter(function (v) { return v.available; });
+    if (!shown.length) { shown = p.variants; }
+    var prices = shown.map(function (v) { return priceNow(p, v); });
+    var min = Math.min.apply(null, prices), max = Math.max.apply(null, prices);
+    if (min === max) { return priceHtml(p, shown[0], false); }
+    return '<p class="p-price"><span class="p-from">vanaf</span> <strong class="p-now">' + fmt(min) + '</strong></p>';
+  }
+  function variantsHtml(p) { // keuze van de inhoud op de productpagina
+    if (!hasVariants(p)) { return ''; }
+    var def = defaultVariant(p);
+    return '<fieldset class="variants" data-variants><legend>Inhoud</legend><div class="variant-grid">' + p.variants.map(function (v) {
+      return '<label class="variant-opt' + (v.available ? '' : ' is-out') + '"><input type="radio" name="variant" value="' + esc(v.id) + '"' +
+        (def && def.id === v.id ? ' checked' : '') + (v.available ? '' : ' disabled') + '><span class="v-name">' + esc(v.label) + '</span><span class="v-price">' +
+        (v.available ? fmt(priceNow(p, v)) : 'Uitverkocht') + '</span></label>';
+    }).join('') + '</div></fieldset>';
   }
   function priceHtml(p, variant, big) {
     var now = priceNow(p, variant), cls = 'p-price' + (big ? ' big' : '');
@@ -123,7 +151,7 @@
   var SELECT = 'id,slug,name,short_description,description,ingredients,content_label,product_type,sku,price_eur,compare_at_price_eur,' +
     'sale_price_eur,sale_starts_at,sale_ends_at,availability,is_available,is_featured,sort_order,created_at,' +
     'product_categories(slug,name),brands(name),product_images(url,alt,sort_order,is_primary),product_attributes(data),' +
-    'product_variants(id,label,price_eur,sort_order,is_available)';
+    'product_variants(id,label,volume_ml,sku,price_eur,sort_order,is_available)';
   function normalise(r) {
     var attrs = r.product_attributes;
     attrs = Array.isArray(attrs) ? (attrs[0] && attrs[0].data) : (attrs && attrs.data);
@@ -138,7 +166,7 @@
       availability: r.availability, available: !!r.is_available, featured: !!r.is_featured, sort: r.sort_order, created: r.created_at,
       images: imgs.map(function (i) { return { url: i.url, alt: i.alt }; }), attributes: attrs || {},
       variants: (r.product_variants || []).slice().sort(function (a, b) { return a.sort_order - b.sort_order; }).map(function (v) {
-        return { id: v.id, label: v.label, price: v.price_eur != null ? Number(v.price_eur) : null, available: !!v.is_available };
+        return { id: v.id, label: v.label, volume: v.volume_ml != null ? Number(v.volume_ml) : null, sku: v.sku, price: v.price_eur != null ? Number(v.price_eur) : null, available: !!v.is_available };
       })
     };
   }
@@ -150,7 +178,8 @@
   window.Eluneya.cart = { items: items, add: add, setQty: setQty, remove: remove, clear: clear, count: count, totals: totals,
                           subscribe: subscribe, update: update, MAX_QTY: MAX_QTY };
   window.Eluneya.shop = { fmt: fmt, esc: esc, priceNow: priceNow, listPrice: listPrice, saleActive: saleActive, status: status,
-                          priceHtml: priceHtml, fetchProducts: fetchProducts, live: live, rest: rest };
+                          priceHtml: priceHtml, cardPriceHtml: cardPriceHtml, variantsHtml: variantsHtml, hasVariants: hasVariants,
+                          defaultVariant: defaultVariant, fetchProducts: fetchProducts, live: live, rest: rest };
 
   window.addEventListener('storage', function (e) { if (e.key === KEY) { memory = null; notify(); } });
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', notify); } else { notify(); }

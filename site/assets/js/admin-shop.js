@@ -8,7 +8,7 @@
   'use strict';
 
   var BUCKET = 'products', MAX_IMG = 3 * 1024 * 1024;
-  var S = { sub: 'orders', cats: [], brands: [], products: [], editing: null, images: [], orderFilter: 'nieuw', order: null, ready: false };
+  var S = { sub: 'orders', cats: [], brands: [], products: [], editing: null, images: [], variants: [], orderFilter: 'nieuw', order: null, ready: false };
   var db, root;
 
   /* ---------- hulp ---------- */
@@ -36,6 +36,9 @@
     if (/products_sale_ok/.test(m)) { return 'De promotieprijs moet lager zijn dan de normale prijs.'; }
     if (/products_compare_ok/.test(m)) { return 'De oude prijs moet hoger zijn dan de normale prijs.'; }
     if (/products_sale_dates/.test(m)) { return 'Het einde van de actie moet na het begin liggen.'; }
+    if (/product_variants_label_uidx/.test(m)) { return 'Twee varianten van dit product hebben dezelfde naam.'; }
+    if (/product_variants_sku_uidx/.test(m)) { return 'Een productcode (SKU) van een variant bestaat al.'; }
+    if (/product_variants.*volume_ml|volume_ml/.test(m)) { return 'De inhoud van een variant is ongeldig (getal groter dan 0).'; }
     if (/product_attributes_data_check/.test(m)) { return 'De geurgegevens zijn ongeldig (te lang of verkeerd formaat).'; }
     if (/violates foreign key constraint.*category|product_categories.*restrict|still referenced/.test(m)) { return 'Deze categorie bevat nog producten. Verplaats of verwijder die eerst.'; }
     if (/geannuleerd_is_definitief/.test(m)) { return 'Een geannuleerde bestelling kan niet heropend worden.'; }
@@ -120,11 +123,14 @@
       '<div class="field"><label for="sp-base">Basisnoten</label><input class="input" id="sp-base" placeholder="vanille, musk, amber"></div></div>' +
       '<h3 class="sub-h">Foto’s</h3><p class="hint" style="margin-bottom:10px">De eerste foto is de hoofdfoto. JPG, PNG of WebP, max. 3 MB per foto.</p>' +
       '<div id="sp-images"></div><div class="field"><label for="sp-files" class="visually-hidden">Foto’s toevoegen</label><input class="input" id="sp-files" type="file" accept="image/jpeg,image/png,image/webp" multiple></div>' +
+      '<h3 class="sub-h">Varianten (formaten)</h3><p class="hint" style="margin-bottom:10px">Meerdere formaten, bv. 15 ml en 70 ml? Voeg ze hier toe: elke variant heeft een eigen naam, inhoud, prijs, voorraad en productcode, en jij bepaalt welke er zijn. Zonder varianten gelden de prijs en voorraad van het product zelf.</p>' +
+      '<div id="sp-variants"></div><button class="btn btn-outline btn-sm" type="button" id="sp-add-variant">+ Variant toevoegen</button>' +
       '<h3 class="sub-h">Voorraad &amp; zichtbaarheid</h3><div class="grid-2"><div class="field"><label for="sp-avail">Beschikbaarheid</label><select class="select" id="sp-avail">' +
       '<option value="in_stock">Op voorraad</option><option value="out_of_stock">Uitverkocht</option><option value="preorder">Voorbestellen</option><option value="on_request">Enkel op aanvraag (via WhatsApp)</option></select></div>' +
       '<div class="field"><label for="sp-sort">Sorteerpositie <span class="hint">(laag = eerst)</span></label><input class="input" id="sp-sort" type="number" min="0" max="9999" value="0"></div></div>' +
-      '<div class="checks"><label class="check"><input type="checkbox" id="sp-track"><span>Voorraad bijhouden (uitverkocht zodra het aantal 0 is)</span></label></div>' +
-      '<div class="field" id="sp-stock-wrap" hidden><label for="sp-stock">Aantal op voorraad</label><input class="input" id="sp-stock" type="number" min="0" max="100000" value="0"></div>' +
+      '<div id="sp-track-wrap"><div class="checks"><label class="check"><input type="checkbox" id="sp-track"><span>Voorraad bijhouden (uitverkocht zodra het aantal 0 is)</span></label></div>' +
+      '<div class="field" id="sp-stock-wrap" hidden><label for="sp-stock">Aantal op voorraad</label><input class="input" id="sp-stock" type="number" min="0" max="100000" value="0"></div></div>' +
+      '<p class="hint" id="sp-var-stock-note" hidden>Dit product heeft varianten: de voorraad beheer je per variant hierboven.</p>' +
       '<div class="checks"><label class="check"><input type="checkbox" id="sp-active"><span>Actief (zichtbaar en bestelbaar op de website)</span></label>' +
       '<label class="check"><input type="checkbox" id="sp-featured"><span>Uitgelicht (bovenaan in de shop)</span></label></div>' +
       '<p class="hint">Na het opslaan verschijnt een nieuw of aangepast product meteen in het overzicht en kan het besteld worden. De vaste productpagina (voor Google) wordt aangemaakt bij de volgende publicatie van de website.</p>' +
@@ -172,11 +178,12 @@
     S.cats = c.data; S.brands = b.data;
   }
   async function loadProducts() {
-    var r = await db.from('products').select('*, product_images(*), product_attributes(data), brands(name), product_categories(name, slug, attribute_set)')
+    var r = await db.from('products').select('*, product_images(*), product_variants(*), product_attributes(data), brands(name), product_categories(name, slug, attribute_set)')
       .order('sort_order').order('name');
     if (r.error) { throw r.error; }
     r.data.forEach(function (p) {
       p.product_images.sort(function (a, b) { return (b.is_primary - a.is_primary) || (a.sort_order - b.sort_order); });
+      p.product_variants.sort(function (a, b) { return a.sort_order - b.sort_order; });
       var a = p.product_attributes; p.attrs = (Array.isArray(a) ? a[0] && a[0].data : a && a.data) || {};
     });
     S.products = r.data;
@@ -278,9 +285,17 @@
     var tags = el('div', 'tags');
     tags.append(el('span', 'badge ' + (p.is_active ? 'on' : 'off'), p.is_active ? 'Actief' : 'Niet zichtbaar'));
     if (p.is_featured) { tags.append(el('span', 'badge soon', 'Uitgelicht')); }
-    if (!p.is_available) { tags.append(el('span', 'badge cancelled', p.availability === 'on_request' ? 'Op aanvraag' : 'Uitverkocht')); }
-    var price = money(p.price_eur) + (p.sale_price_eur != null ? ' → actie ' + money(p.sale_price_eur) : '');
-    var stock = p.track_stock ? p.stock_qty + ' op voorraad' : 'voorraad niet bijgehouden';
+    if (!(p.product_variants.length ? p.product_variants.some(function (v) { return v.is_available; }) && p.availability !== 'out_of_stock' && p.availability !== 'on_request' : p.is_available)) { tags.append(el('span', 'badge cancelled', p.availability === 'on_request' ? 'Op aanvraag' : 'Uitverkocht')); }
+    var vs = p.product_variants, price, stock;
+    if (vs.length) {
+      var prices = vs.map(function (v) { return v.price_eur != null ? Number(v.price_eur) : Number(p.price_eur); });
+      price = vs.length + (vs.length === 1 ? ' variant' : ' varianten') + ' · vanaf ' + money(Math.min.apply(null, prices));
+      var left = vs.filter(function (v) { return v.is_available; }).length;
+      stock = left + ' van ' + vs.length + ' beschikbaar';
+    } else {
+      price = money(p.price_eur) + (p.sale_price_eur != null ? ' → actie ' + money(p.sale_price_eur) : '');
+      stock = p.track_stock ? p.stock_qty + ' op voorraad' : 'voorraad niet bijgehouden';
+    }
     body.append(tags, el('h3', null, p.name),
       el('div', 'meta', [(p.product_categories || {}).name, (p.brands || {}).name, p.content_label].filter(Boolean).join(' · ')),
       el('div', 'meta', price + ' · ' + stock + (p.sku ? ' · ' + p.sku : '')));
@@ -325,7 +340,11 @@
     var c = currentCat(), has = S.editing && Object.keys(S.editing.attrs || {}).length;
     $('sp-frag').hidden = !(c && c.attribute_set === 'fragrance') && !has;
   }
-  function syncStock() { $('sp-stock-wrap').hidden = !$('sp-track').checked; }
+  function syncStock() {
+    var hasVar = S.variants.length > 0;
+    $('sp-track-wrap').hidden = hasVar; $('sp-var-stock-note').hidden = !hasVar;
+    $('sp-stock-wrap').hidden = !$('sp-track').checked;
+  }
 
   function openProduct(p) {
     S.editing = p || null; msg('sp-msg');
@@ -349,8 +368,60 @@
     $('sp-avail').value = d.availability; $('sp-sort').value = d.sort_order; $('sp-track').checked = d.track_stock; $('sp-stock').value = d.stock_qty;
     $('sp-active').checked = d.is_active; $('sp-featured').checked = d.is_featured;
     S.images = p ? p.product_images.map(function (i) { return { id: i.id, url: i.url, alt: i.alt || '' }; }) : [];
-    syncFragrance(); syncStock(); renderImages();
+    S.variants = p ? p.product_variants.map(function (v) {
+      return { id: v.id, label: v.label, volume: v.volume_ml != null ? String(Number(v.volume_ml)).replace('.', ',') : '', sku: v.sku || '',
+               price: v.price_eur != null ? String(v.price_eur).replace('.', ',') : '', track: v.stock_qty != null, stock: v.stock_qty != null ? String(v.stock_qty) : '0', active: v.is_active };
+    }) : [];
+    syncFragrance(); renderImages(); renderVariants();
     $('sh-prod-dlg').showModal();
+  }
+
+  /* ---- varianten ---- */
+  function vField(label, input) { var f = el('div', 'field'); f.append(el('label', null, label), input); return f; }
+  function vInput(cls, value, attrs) {
+    var i = el('input', 'input'); i.value = value; Object.keys(attrs || {}).forEach(function (k) { i.setAttribute(k, attrs[k]); }); return i;
+  }
+  function renderVariants() {
+    var box = $('sp-variants'); box.replaceChildren();
+    S.variants.forEach(function (v, i) {
+      var card = el('div', 'var-item'), n = i + 1;
+      var label = vInput('', v.label, { maxlength: 60, placeholder: 'bv. 15 ml', 'aria-label': 'Naam variant ' + n });
+      var vol = vInput('', v.volume, { inputmode: 'decimal', placeholder: 'bv. 15', 'aria-label': 'Inhoud in ml van variant ' + n });
+      var sku = vInput('', v.sku, { maxlength: 60, autocapitalize: 'characters', 'aria-label': 'Productcode variant ' + n });
+      var price = vInput('', v.price, { inputmode: 'decimal', placeholder: 'leeg = productprijs', 'aria-label': 'Prijs variant ' + n });
+      var stock = vInput('', v.stock, { type: 'number', min: 0, max: 100000, 'aria-label': 'Voorraad variant ' + n });
+      stock.type = 'number'; stock.disabled = !v.track;
+      label.addEventListener('input', function () { v.label = label.value; });
+      vol.addEventListener('input', function () { v.volume = vol.value; });
+      vol.addEventListener('change', function () { // inhoud ingevuld en nog geen naam: stel "<inhoud> ml" voor
+        var n2 = num(vol.value);
+        if (!label.value.trim() && n2 > 0) { v.label = String(n2).replace('.', ',') + ' ml'; label.value = v.label; }
+      });
+      sku.addEventListener('input', function () { v.sku = sku.value; });
+      price.addEventListener('input', function () { v.price = price.value; });
+      stock.addEventListener('input', function () { v.stock = stock.value; });
+      var track = el('label', 'check'), tc = el('input'); tc.type = 'checkbox'; tc.checked = v.track; track.append(tc, el('span', null, 'Voorraad bijhouden'));
+      tc.addEventListener('change', function () { v.track = tc.checked; stock.disabled = !tc.checked; });
+      var act = el('label', 'check'), ac = el('input'); ac.type = 'checkbox'; ac.checked = v.active; act.append(ac, el('span', null, 'Actief (te koop)'));
+      ac.addEventListener('change', function () { v.active = ac.checked; });
+      var head = el('div', 'var-head'), acts = el('div', 'acts');
+      head.append(el('strong', null, 'Variant ' + n), acts);
+      [['↑', 'Naar boven', -1], ['↓', 'Naar beneden', 1]].forEach(function (d) {
+        var b = el('button', 'icon-btn', d[0]); b.type = 'button'; b.setAttribute('aria-label', d[1] + ' (variant ' + n + ')'); b.disabled = (i + d[2] < 0 || i + d[2] >= S.variants.length);
+        b.addEventListener('click', function () { var x = S.variants.splice(i, 1)[0]; S.variants.splice(i + d[2], 0, x); renderVariants(); });
+        acts.append(b);
+      });
+      var rm = el('button', 'icon-btn', '✕'); rm.type = 'button'; rm.setAttribute('aria-label', 'Variant ' + n + ' verwijderen');
+      rm.addEventListener('click', function () { S.variants.splice(i, 1); renderVariants(); });
+      acts.append(rm);
+      var g1 = el('div', 'grid-2'); g1.append(vField('Naam *', label), vField('Inhoud (ml)', vol));
+      var g2 = el('div', 'grid-2'); g2.append(vField('Prijs (€)', price), vField('Productcode (SKU)', sku));
+      var g3 = el('div', 'grid-2'); g3.append(el('div', 'checks', null), vField('Aantal op voorraad', stock));
+      g3.firstChild.append(track, act);
+      card.append(head, g1, g2, g3); box.append(card);
+    });
+    if (!S.variants.length) { box.append(el('p', 'hint', 'Nog geen varianten: het product wordt verkocht met de prijs en voorraad hierboven.')); }
+    syncStock();
   }
 
   function renderImages() {
@@ -376,6 +447,11 @@
     $('sp-name').addEventListener('input', function () { if (!$('sp-slug').dataset.manual) { $('sp-slug').value = slugify(this.value); } });
     $('sp-slug').addEventListener('input', function () { this.dataset.manual = '1'; });
     $('sp-cat').addEventListener('change', syncFragrance);
+    $('sp-add-variant').addEventListener('click', function () {
+      if (S.variants.length >= 12) { msg('sp-msg', 'Maximaal 12 varianten per product.'); return; }
+      S.variants.push({ label: '', volume: '', sku: '', price: '', track: false, stock: '0', active: true }); renderVariants();
+      var inputs = $('sp-variants').querySelectorAll('.var-item'); inputs[inputs.length - 1].querySelector('input').focus();
+    });
     $('sp-track').addEventListener('change', syncStock);
     $('sp-brand').addEventListener('change', function () { $('sp-newbrand-wrap').hidden = this.value !== '__new'; });
     $('sp-files').addEventListener('change', function () {
@@ -411,8 +487,27 @@
     else if (['top', 'heart', 'base'].some(function (k) { return notes[k].length > 20 || notes[k].some(function (n) { return n.length > 60; }); })) {
       err = ['Per noten-laag maximaal 20 noten van elk max. 60 tekens.', 'sp-top'];
     }
+    var vars = [];
+    if (!err) {
+      var seenLabel = {}, seenSku = {};
+      S.variants.forEach(function (v, i) {
+        if (err) { return; }
+        var n = i + 1, label = v.label.trim(), vol = num(v.volume), vp = num(v.price), vsku = v.sku.trim(), vs = v.track ? Number(v.stock === '' ? 0 : v.stock) : null;
+        if (!label || label.length > 60) { err = ['Vul bij variant ' + n + ' een naam in (max. 60 tekens).', null]; }
+        else if (seenLabel[label.toLowerCase()]) { err = ['Twee varianten heten “' + label + '”. Geef elke variant een eigen naam.', null]; }
+        else if (v.volume.trim() !== '' && !(isFinite(vol) && vol > 0 && vol <= 100000)) { err = ['De inhoud van variant ' + n + ' moet een getal groter dan 0 zijn.', null]; }
+        else if (v.price.trim() !== '' && !(isFinite(vp) && vp >= 0 && vp <= 10000)) { err = ['De prijs van variant ' + n + ' moet tussen € 0 en € 10.000 liggen (of leeg zijn).', null]; }
+        else if (vsku.length > 60) { err = ['De productcode van variant ' + n + ' is te lang (max. 60 tekens).', null]; }
+        else if (vsku && seenSku[vsku.toLowerCase()]) { err = ['Twee varianten hebben dezelfde productcode “' + vsku + '”.', null]; }
+        else if (v.track && (!Number.isInteger(vs) || vs < 0 || vs > 100000)) { err = ['De voorraad van variant ' + n + ' moet een heel getal van 0 of meer zijn.', null]; }
+        if (err) { return; }
+        seenLabel[label.toLowerCase()] = 1; if (vsku) { seenSku[vsku.toLowerCase()] = 1; }
+        vars.push({ id: v.id, row: { label: label, volume_ml: v.volume.trim() === '' ? null : vol, sku: vsku || null, price_eur: v.price.trim() === '' ? null : vp,
+                                      stock_qty: v.track ? vs : null, is_active: v.active, sort_order: i } });
+      });
+    }
     if (err) { return { error: err }; }
-    return { row: {
+    return { variants: vars, row: {
       name: name, slug: slug, category_id: $('sp-cat').value, product_type: $('sp-type').value, price_eur: price,
       compare_at_price_eur: cmp, sale_price_eur: sale, sale_starts_at: sale == null ? null : from, sale_ends_at: sale == null ? null : to,
       short_description: f('sp-short') || null, description: f('sp-desc') || null, content_label: f('sp-content') || null,
@@ -424,7 +519,7 @@
   async function saveProduct(e) {
     e.preventDefault(); msg('sp-msg');
     var res = readProduct();
-    if (res.error) { msg('sp-msg', res.error[0]); $(res.error[1]).focus(); return; }
+    if (res.error) { msg('sp-msg', res.error[0]); if (res.error[1]) { $(res.error[1]).focus(); } return; }
     var btn = $('sp-submit'); btn.disabled = true;
     try {
       var row = res.row, brand = $('sp-brand').value;
@@ -439,7 +534,8 @@
       else { saved = await db.from('products').insert(row).select().single(); }
       if (saved.error) { msg('sp-msg', dbError(saved.error)); return; }
       var id = saved.data.id;
-      S.editing = Object.assign({ attrs: {}, product_images: [] }, saved.data, { attrs: (S.editing && S.editing.attrs) || {}, product_images: (S.editing && S.editing.product_images) || [] });
+      S.editing = Object.assign({ attrs: {}, product_images: [] }, saved.data, { attrs: (S.editing && S.editing.attrs) || {}, product_images: (S.editing && S.editing.product_images) || [],
+                                                                                        product_variants: (S.editing && S.editing.product_variants) || [] });
 
       // geurgegevens (andere sleutels die er al stonden blijven behouden)
       var a = Object.assign({}, S.editing.attrs), notes = {};
@@ -449,6 +545,23 @@
       if (Object.keys(notes).length) { a.notes = notes; } else { delete a.notes; }
       var ar = Object.keys(a).length ? await db.from('product_attributes').upsert({ product_id: id, data: a }) : await db.from('product_attributes').delete().eq('product_id', id);
       if (ar.error) { msg('sp-msg', 'Product opgeslagen, maar de geurgegevens niet: ' + dbError(ar.error)); return; }
+
+      // varianten: verwijderde weg, bestaande bijwerken, nieuwe toevoegen (volgorde = volgorde in de lijst)
+      var known = (S.editing.product_variants || []).map(function (v) { return v.id; });
+      var keepV = res.variants.filter(function (v) { return v.id; }).map(function (v) { return v.id; });
+      var goneV = known.filter(function (x) { return keepV.indexOf(x) < 0; });
+      if (goneV.length) {
+        var dv = await db.from('product_variants').delete().in('id', goneV);
+        if (dv.error) { msg('sp-msg', 'Product opgeslagen, maar varianten verwijderen mislukte: ' + dbError(dv.error)); return; }
+      }
+      for (var vi = 0; vi < res.variants.length; vi++) {
+        var rv = res.variants[vi], vr;
+        if (rv.id) { vr = await db.from('product_variants').update(rv.row).eq('id', rv.id); }
+        else { vr = await db.from('product_variants').insert(Object.assign({ product_id: id }, rv.row)).select().single(); }
+        if (vr.error) { msg('sp-msg', 'Product opgeslagen, maar een variant niet: ' + dbError(vr.error)); return; }
+        if (!rv.id && vr.data) { rv.id = vr.data.id; S.variants[vi].id = vr.data.id; }
+      }
+      S.editing.product_variants = res.variants.map(function (v) { return { id: v.id }; });
 
       // foto's: verwijderde weg, nieuwe uploaden, volgorde en hoofdfoto bijwerken
       var keep = S.images.filter(function (i) { return i.id; }).map(function (i) { return i.id; });
@@ -539,6 +652,7 @@
     if (!S.products.length) { box.replaceChildren(el('p', 'empty', 'Nog geen producten.')); return; }
     var frag = document.createDocumentFragment();
     S.products.forEach(function (p) {
+      if (p.product_variants.length) { p.product_variants.forEach(function (v) { frag.append(variantStockRow(p, v)); }); return; }
       var row = el('div', 'stock-row'), name = el('div'), ctr = el('div', 'stock-ctrl');
       name.append(el('strong', null, p.name), el('div', 'meta', [p.sku, (p.product_categories || {}).name].filter(Boolean).join(' · ')));
       var track = el('label', 'check'), tc = el('input'); tc.type = 'checkbox'; tc.checked = p.track_stock; track.append(tc, el('span', null, 'Bijhouden'));
@@ -561,6 +675,29 @@
       ctr.append(track, qty, av, save); row.append(name, ctr); frag.append(row);
     });
     box.replaceChildren(frag);
+  }
+
+  function variantStockRow(p, v) {
+    var row = el('div', 'stock-row'), name = el('div'), ctr = el('div', 'stock-ctrl');
+    name.append(el('strong', null, p.name + ' — ' + v.label), el('div', 'meta', [v.sku, (p.product_categories || {}).name].filter(Boolean).join(' · ')));
+    var track = el('label', 'check'), tc = el('input'); tc.type = 'checkbox'; tc.checked = v.stock_qty != null; track.append(tc, el('span', null, 'Bijhouden'));
+    var qty = el('input', 'input'); qty.type = 'number'; qty.min = 0; qty.max = 100000; qty.value = v.stock_qty != null ? v.stock_qty : 0; qty.disabled = v.stock_qty == null;
+    qty.setAttribute('aria-label', 'Voorraad van ' + p.name + ' ' + v.label);
+    tc.addEventListener('change', function () { qty.disabled = !tc.checked; });
+    var act = el('label', 'check'), ac = el('input'); ac.type = 'checkbox'; ac.checked = v.is_active; act.append(ac, el('span', null, 'Actief'));
+    var save = el('button', 'btn btn-outline btn-sm', 'Opslaan'); save.type = 'button';
+    save.addEventListener('click', async function () {
+      var q = tc.checked ? Number(qty.value || 0) : null;
+      if (tc.checked && (!Number.isInteger(q) || q < 0 || q > 100000)) { msg('sh-stock-msg', 'De voorraad van “' + p.name + ' ' + v.label + '” moet een heel getal van 0 of meer zijn.'); return; }
+      save.disabled = true;
+      var r = await db.from('product_variants').update({ stock_qty: q, is_active: ac.checked }).eq('id', v.id);
+      save.disabled = false;
+      if (r.error) { msg('sh-stock-msg', dbError(r.error)); return; }
+      msg('sh-stock-msg'); save.textContent = 'Opgeslagen ✓'; setTimeout(function () { save.textContent = 'Opslaan'; }, 1800);
+    });
+    if (v.stock_qty != null && v.stock_qty <= 2) { row.classList.add('low'); }
+    ctr.append(track, qty, act, save); row.append(name, ctr);
+    return row;
   }
 
   /* ---------- openen vanuit admin.html ---------- */
