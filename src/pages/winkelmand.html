@@ -1,0 +1,23 @@
+<!--meta {
+  "title": "Winkelmand — Eluneya",
+  "description": "Je winkelmand bij Eluneya: controleer je producten en plaats een bestelaanvraag.",
+  "noindex": true,
+  "requires_shop": true,
+  "styles": ["shop.css"],
+  "scripts": ["catalog.js", "checkout.js"]
+} -->
+<main id="inhoud" class="shop">
+  <section class="page-hero shop-hero" aria-labelledby="page-title">
+    <div class="container">
+      <p class="eyebrow">Shop</p>
+      <h1 class="h-display" id="page-title">Winkelmand</h1>
+    </div>
+  </section>
+
+  <section class="section-tight" aria-label="Je winkelmand">
+    <div class="container">
+      <noscript><p class="booking-card">De winkelmand heeft JavaScript nodig. Je kunt je bestelling ook rechtstreeks doorgeven via <a class="text-link" href="{{WA_LINK}}">WhatsApp</a>.</p></noscript>
+      <div id="cart-root" aria-live="polite"><p class="lead">Je winkelmand wordt geladen…</p></div>
+    </div>
+  </section>
+</main>

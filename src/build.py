@@ -473,6 +473,8 @@ def build_pages():
         raw = src.read_text(encoding="utf-8")
         m = re.match(r"\s*<!--meta\s*(\{.*?\})\s*-->\s*", raw, re.S)
         meta = json.loads(m.group(1))
+        if meta.get("requires_shop") and not shop.visible():
+            continue   # winkelmand enkel bouwen als de shop zichtbaar is
         body = raw[m.end():]
         path = src.name
         base = "/" if path == "404.html" else ""
@@ -483,6 +485,8 @@ def build_pages():
         if meta.get("breadcrumb"):
             ld.append(breadcrumb_ld(meta["breadcrumb"], path))
         meta["_ld"] = ld
+        if meta.get("scripts"):
+            meta["extra_head"] = "".join('\n  <script src="{BASE}assets/js/' + s + '" defer></script>' for s in meta["scripts"])
         if meta.get("booking"):
             meta["extra_head"] = '\n  <script src="{BASE}assets/js/booking.js" defer></script>'
 
