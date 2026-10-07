@@ -70,6 +70,25 @@
     .img-preview { width: 100%; max-height: 180px; object-fit: cover; border-radius: 10px; margin-bottom: 10px; background: var(--sand); }
     .btn-danger { background: var(--error); color: var(--white); }
     .btn-danger:hover { background: #7d3326; }
+    .hint { font-size: 12px; color: var(--text-soft); }
+    .sub-tabs { margin-bottom: 24px; }
+    .count { display: inline-block; min-width: 20px; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--taupe-dark); color: var(--white); font-size: 11px; line-height: 20px; text-align: center; }
+    .tab[aria-pressed="true"] .count { background: var(--taupe-light); color: var(--charcoal); }
+    .sub-h { font-family: var(--sans); font-size: 11px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--taupe-text); margin: 26px 0 12px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .img-item { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+    .img-item img { width: 56px; height: 70px; object-fit: cover; border-radius: 8px; background: var(--sand); }
+    .img-item .badge { display: inline-block; margin-bottom: 6px; }
+    .img-item .acts { display: flex; gap: 6px; }
+    .order-lines { border-top: 1px solid var(--line); margin-top: 14px; }
+    .order-lines li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .order-lines .sum { font-size: 15px; }
+    .stock-row { display: grid; gap: 10px 16px; padding: 14px 0; border-bottom: 1px solid var(--line); align-items: center; }
+    @media (min-width: 900px) { .stock-row { grid-template-columns: 1fr auto; } }
+    .stock-row.low { background: rgba(154, 63, 48, .05); }
+    .stock-row .meta { font-size: 12px; color: var(--text-soft); }
+    .stock-ctrl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .stock-ctrl .input { width: 96px; min-height: 40px; }
+    .stock-ctrl .select { width: 170px; min-height: 40px; }
   </style>
 </head>
 <body>
@@ -103,6 +122,7 @@
       <div class="tabs view-tabs" role="group" aria-label="Onderdeel">
         <button class="tab" type="button" data-view="agenda" aria-pressed="true">Agenda</button>
         <button class="tab" type="button" data-view="promos" aria-pressed="false">Promoties</button>
+        <button class="tab" type="button" data-view="shop" aria-pressed="false">Shop</button>
       </div>
 
       <div id="view-agenda">
@@ -157,6 +177,9 @@
           <div class="list" id="promo-list" aria-live="polite"></div>
         </section>
       </div>
+
+      <!-- Shop: producten, categorieën, voorraad, bestellingen (assets/js/admin-shop.js) -->
+      <div id="view-shop" hidden></div>
     </div>
   </main>
 
@@ -246,6 +269,7 @@
 
   <script src="assets/js/config.js"></script>
   <script src="assets/js/services.js"></script>
+  <script src="assets/js/admin-shop.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
   (function () {
@@ -261,6 +285,7 @@
       return;
     }
     var db = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey);
+    window.ELUNEYA_ADMIN = { db: db };   // voor admin-shop.js (zelfde ingelogde sessie)
     var TREAT = {}; DATA.services.forEach(function (s) { TREAT[s.slug] = s; });
     var HOURS = DATA.openingHours, BUFFER = DATA.rules.bufferMinutes;
     var DAYS = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
@@ -288,6 +313,7 @@
       if (!adm.data) { info('Geen toegang', 'Dit account heeft geen beheerrechten. Voeg het toe aan de tabel admins (zie supabase/schema.sql).'); $('logout').hidden = false; return; }
       show('app');
       refresh();
+      if (window.ELUNEYA_ADMIN_SHOP) { window.ELUNEYA_ADMIN_SHOP.countNew(); }   // aantal nieuwe bestellingen in het tabblad
     }
     $('login-view').addEventListener('submit', async function (e) {
       e.preventDefault(); msg('login-msg');
@@ -442,7 +468,9 @@
         document.querySelectorAll('[data-view]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
         $('view-agenda').hidden = v !== 'agenda';
         $('view-promos').hidden = v !== 'promos';
+        $('view-shop').hidden = v !== 'shop';
         if (v === 'promos') { renderPromos(); }
+        if (v === 'shop' && window.ELUNEYA_ADMIN_SHOP) { window.ELUNEYA_ADMIN_SHOP.open(); }
       });
     });
 
