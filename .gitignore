@@ -3,3 +3,4 @@ __pycache__/
 test/e2e/node_modules/
 test/e2e/.bin/
 test/e2e/.data/
+voorbeeld/

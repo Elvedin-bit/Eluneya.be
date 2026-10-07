@@ -91,6 +91,7 @@ de sitemap. De bestaande site wordt dan byte voor byte identiek gebouwd.
 | Integratietests tegen echte PostgreSQL + PostgREST, migratie-oefening, SQL-audit | `test/e2e/` (zie `test/e2e/README.md`) |
 | Controle na een migratie (alleen lezen) | `supabase/verify.sql` |
 | Plan voor de migratie naar productie | `docs/PRODUCTIE-PLAN.md` |
+| Voorbeeldbestand van de hele site (ook shop) om door te sturen | `python3 src/preview.py` → `voorbeeld/eluneya-voorbeeld.html` (zie `src/preview.py`) |
 
 Datamodel: `product_categories` (met `attribute_set`, bv. `fragrance` voor geurprofiel; `parent_id` voor subcategorieën),
 `brands`, `products`, `product_attributes` (jsonb: geurfamilie, concentratie, top-/hart-/basisnoten, later andere velden),
