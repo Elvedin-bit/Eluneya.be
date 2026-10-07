@@ -12,12 +12,15 @@ Gebruik:  python3 src/build.py      (vanuit de projectmap)
 Uitvoer:  site/
 """
 import json
+import os
 import re
 from pathlib import Path
 
+import shop  # webshop: catalogus, productpagina's, navigatie (src/shop.py)
+
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src" / "pages"
-OUT = ROOT / "site"
+OUT = Path(os.environ["ELUNEYA_OUT"]) if os.environ.get("ELUNEYA_OUT") else ROOT / "site"   # ELUNEYA_OUT: enkel voor tests
 
 # ---------------------------------------------------------------------------
 # 1. Bedrijfsgegevens
@@ -207,20 +210,31 @@ def contact_lines():
 </ul>"""
 
 
+def nav_links(active, mobile=False):
+    """Hoofdmenu. Het Shop-item (met submenu) verschijnt na Journeys zodra de shop zichtbaar is (zie shop.py)."""
+    out = []
+    for href, label in NAV:
+        cur = ' aria-current="page"' if href == active else ""
+        out.append(f'<a href="{{BASE}}{href}"{cur}>{label}</a>')
+        if href == "journeys.html" and shop.visible():
+            out.append(shop.nav_item(active == "shop", mobile))
+    return "".join(out)
+
+
 def header(active):
-    links = "".join(
-        f'<a href="{{BASE}}{href}"{" aria-current=" + chr(34) + "page" + chr(34) if href == active else ""}>{label}</a>'
-        for href, label in NAV)
+    links = nav_links(active)
+    mobile_links = nav_links(active, mobile=True)
+    cart = shop.cart_link() if shop.visible() else ""
     return f"""<a class="skip-link" href="#inhoud">Ga naar de inhoud</a>
 <header class="site-header">
   <div class="container nav-inner">
     <a class="logo" href="{{BASE}}index.html" aria-label="Eluneya, naar de startpagina">ELUNEYA</a>
     <nav class="nav-links" aria-label="Hoofdmenu">{links}</nav>
-    <a class="btn btn-dark nav-cta" href="{{BASE}}afspraak.html">Maak afspraak</a>
+    <a class="btn btn-dark nav-cta" href="{{BASE}}afspraak.html">Maak afspraak</a>{cart}
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Menu openen"><span></span><span></span><span></span></button>
   </div>
   <nav class="mobile-menu" id="mobile-menu" aria-label="Mobiel menu">
-    {links}
+    {mobile_links}
     <a class="btn btn-dark" href="{{BASE}}afspraak.html">Maak afspraak</a>
     <p class="menu-meta">{SITE['street']}, {SITE['city']} · op afspraak</p>
   </nav>
@@ -230,6 +244,8 @@ def header(active):
 def footer():
     s = SITE
     menu = "".join(f'<li><a href="{{BASE}}{h}">{l}</a></li>' for h, l in NAV)
+    if shop.visible():
+        menu += f'<li><a href="{{BASE}}shop/">Shop</a></li>'
     return f"""<footer class="site-footer">
   <div class="container">
     <div class="footer-grid">
@@ -382,11 +398,14 @@ def breadcrumb_ld(label, path):
 # ---------------------------------------------------------------------------
 def head(meta, path):
     d = SITE["domain"]
-    canonical = d + "/" + ("" if path == "index.html" else path)
+    canonical = d + "/" + ("" if path == "index.html" else path[: -len("index.html")] if path.endswith("/index.html") else path)
     robots = '<meta name="robots" content="noindex, follow">' if meta.get("noindex") else ""
     ld = ""
     for block in meta.get("_ld", []):
         ld += f'\n  <script type="application/ld+json">\n{block}\n  </script>'
+    og_size = "" if meta.get("og_image") else '\n  <meta property="og:image:width" content="1200">\n  <meta property="og:image:height" content="630">'
+    extra_css = "".join(f'\n  <link rel="stylesheet" href="{{BASE}}assets/css/{c}">' for c in meta.get("styles", []))
+    cart_js = '\n  <script src="{BASE}assets/js/cart.js" defer></script>' if shop.visible() else ""
     preload_img = ""
     if meta.get("preload_hero"):
         preload_img = ('\n  <link rel="preload" as="image" href="{BASE}assets/img/hero-strand-lg.webp" '
@@ -402,16 +421,14 @@ def head(meta, path):
   <link rel="canonical" href="{canonical}">
   <meta name="theme-color" content="#ffffff">
 
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="{meta.get('og_type', 'website')}">
   <meta property="og:locale" content="nl_BE">
   <meta property="og:site_name" content="Eluneya">
   <meta property="og:title" content="{esc(meta.get('og_title', meta['title']))}">
   <meta property="og:description" content="{esc(meta['description'])}">
   <meta property="og:url" content="{canonical}">
-  <meta property="og:image" content="{d}/og-image.jpg">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Eluneya — Glow from the inside out. Massages, facials en journeys in Wevelgem.">
+  <meta property="og:image" content="{meta.get('og_image', d + '/og-image.jpg')}">{og_size}
+  <meta property="og:image:alt" content="{esc(meta.get('og_image_alt', 'Eluneya — Glow from the inside out. Massages, facials en journeys in Wevelgem.'))}">
   <meta name="twitter:card" content="summary_large_image">
 
   <link rel="icon" href="{{BASE}}favicon.ico" sizes="any">
@@ -421,12 +438,12 @@ def head(meta, path):
 
   <link rel="preload" href="{{BASE}}assets/fonts/poppins-latin-300-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="{{BASE}}assets/fonts/cormorant-garamond-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>{preload_img}
-  <link rel="stylesheet" href="{{BASE}}assets/css/style.css">
+  <link rel="stylesheet" href="{{BASE}}assets/css/style.css">{extra_css}
   <script>document.documentElement.classList.add('js');</script>
   <script src="{{BASE}}assets/js/main.js" defer></script>
   <script src="{{BASE}}assets/js/config.js" defer></script>
   <script src="{{BASE}}assets/js/services.js" defer></script>
-  <script src="{{BASE}}assets/js/promotions.js" defer></script>{meta.get('extra_head', '')}{ld}
+  <script src="{{BASE}}assets/js/promotions.js" defer></script>{cart_js}{meta.get('extra_head', '')}{ld}
 </head>"""
 
 
@@ -477,13 +494,20 @@ def build_pages():
         if left:
             raise SystemExit(f"{path}: onvervangen blokken {left}")
 
-        body_cls = meta.get("body_class", "")
-        html = (head(meta, path) + f'\n<body{" class=" + chr(34) + body_cls + chr(34) if body_cls else ""}>\n'
-                + header(path if path != "afspraak.html" else "") + "\n" + body.strip() + "\n" + footer() + "\n</body>\n</html>\n")
-        html = html.replace("{BASE}", base)
-        html = re.sub(r"\n\s*\n\s*\n", "\n\n", html)
-        (OUT / path).write_text(html, encoding="utf-8")
-        print("gebouwd:", path)
+        write_page(meta, path, body, base, path if path != "afspraak.html" else "")
+
+
+def write_page(meta, path, body, base, active):
+    """Zet <head>, header, inhoud en footer samen en schrijft de pagina (path mag submappen bevatten)."""
+    body_cls = meta.get("body_class", "")
+    html = (head(meta, path) + f'\n<body{" class=" + chr(34) + body_cls + chr(34) if body_cls else ""}>\n'
+            + header(active) + "\n" + body.strip() + "\n" + footer() + "\n</body>\n</html>\n")
+    html = html.replace("{BASE}", base)
+    html = re.sub(r"\n\s*\n\s*\n", "\n\n", html)
+    target = OUT / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(html, encoding="utf-8")
+    print("gebouwd:", path)
 
 
 def build_services_js():
@@ -528,6 +552,7 @@ def build_seo_files():
     d = SITE["domain"]
     pages = [("index.html", "1.0"), ("behandelingen.html", "0.9"), ("afspraak.html", "0.9"), ("journeys.html", "0.8"),
              ("over.html", "0.7"), ("contact.html", "0.8"), ("privacy.html", "0.2"), ("voorwaarden.html", "0.2")]
+    pages += shop.sitemap_urls()
     import datetime
     today = datetime.date.today().isoformat()
     urls = "".join(
@@ -550,6 +575,7 @@ def build_seo_files():
 
 if __name__ == "__main__":
     build_pages()
+    shop.build(write_page=write_page, domain=SITE["domain"], out=OUT, wa_link=wa_link, cta_band=cta_band)
     build_services_js()
     build_sql_seed()
     build_seo_files()

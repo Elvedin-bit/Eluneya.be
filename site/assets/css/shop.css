@@ -1,0 +1,169 @@
+/* ==========================================================================
+   Eluneya — webshop
+   Zelfde tokens en typografie als style.css (Cormorant Garamond + Poppins, crème/zand/taupe).
+   Rustig en ruim: veel witruimte, fijne lijnen, geen schreeuwerige kleuren.
+   Opbouw: 1 overzicht · 2 productkaart · 3 productpagina · 4 winkelmand & afrekenen · 5 melding
+   ========================================================================== */
+
+.section-tight { padding-block: clamp(40px, 6vw, 80px); }
+.shop-hero { padding-bottom: clamp(40px, 6vw, 72px); }
+
+/* 1. Overzicht, filters ------------------------------------------------------ */
+.shop-toolbar { display: grid; gap: 22px; margin-bottom: clamp(28px, 4vw, 44px); }
+.chips { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 8px 22px; border: 1px solid var(--line); border-radius: 999px;
+  font-size: 12px; letter-spacing: .14em; text-transform: uppercase; transition: background-color .25s ease, border-color .25s ease, color .25s ease; }
+.chip:hover { border-color: var(--taupe); }
+.chip[aria-current="true"] { background: var(--charcoal); border-color: var(--charcoal); color: var(--white); }
+@media (min-width: 900px) { .chips { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; } }
+
+.shop-controls { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: flex-end; }
+.shop-controls .field { flex: 1 1 100%; }
+@media (min-width: 640px) { .shop-controls .field { flex: 1 1 200px; } .shop-controls .field:first-child { flex: 2 1 280px; } }
+.shop-controls .field { margin-bottom: 8px; }
+.shop-controls .field label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--taupe-text); }
+.shop-instock { padding-block: 10px 14px; align-self: end; }
+.shop-count { font-size: 13px; color: var(--text-soft); min-height: 1.4em; }
+.shop-empty { text-align: center; color: var(--text-soft); padding: 56px 0; font-family: var(--serif); font-size: 1.5rem; }
+.shop-note { padding-block: 28px; background: var(--cream); text-align: center; font-size: 13px; color: var(--text-soft); }
+.shop-note p { max-width: 44rem; margin-inline: auto; }
+
+/* 2. Productkaart + raster --------------------------------------------------- */
+.p-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(28px, 5vw, 48px) clamp(12px, 2.4vw, 28px); }
+@media (min-width: 700px) { .p-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .p-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.p-card { position: relative; }
+.p-card[hidden] { display: none; }
+.p-card-link { display: block; }
+.p-media-wrap { position: relative; }
+.p-media { position: relative; overflow: hidden; background: var(--cream); border-radius: var(--radius); }
+.p-media img { width: 100%; height: 100%; object-fit: cover; transition: scale 1.1s var(--ease); }
+.p-card-link:hover .p-media img { scale: 1.04; }
+.p-noimg { display: grid; place-items: center; aspect-ratio: 4 / 5; background: linear-gradient(160deg, var(--cream), var(--sand)); }
+.p-noimg span { font-family: var(--serif); font-style: italic; font-size: clamp(3rem, 9vw, 5.5rem); color: var(--taupe-light); }
+.p-badges { position: absolute; left: 10px; top: 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.p-badge { padding: 4px 11px; border-radius: 999px; background: var(--white); border: 1px solid var(--line); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; line-height: 1.5; color: var(--charcoal); }
+.p-badge.sale { background: var(--taupe-dark); border-color: var(--taupe-dark); color: var(--white); }
+.p-badge.out { color: var(--text-soft); }
+.p-card-body { padding-top: 16px; }
+.p-brand { font-size: 10px; letter-spacing: .24em; text-transform: uppercase; color: var(--taupe-text); margin-bottom: 4px; }
+.p-name { font-size: clamp(1.25rem, 2.4vw, 1.55rem); font-weight: 500; line-height: 1.2; margin-bottom: 4px; }
+.p-card-link:hover .p-name { color: var(--taupe-dark); }
+.p-meta { font-size: 12px; color: var(--text-soft); margin-bottom: 6px; }
+.p-price { font-family: var(--serif); font-size: 1.2rem; line-height: 1.4; color: var(--charcoal); }
+.p-price .p-now { font-weight: 500; }
+.p-was { color: var(--text-soft); font-weight: 400; font-size: .92em; margin-right: 6px; text-decoration-color: var(--taupe); }
+.p-card .p-badge.out ~ * { opacity: 1; }
+.p-card[data-in="0"] .p-media img { opacity: .55; }
+
+/* 3. Productpagina ----------------------------------------------------------- */
+.product { padding-top: calc(var(--header-h) + 8px); }
+.crumbs { display: flex; flex-wrap: wrap; gap: 6px 10px; padding: 22px 0 28px; font-size: 12px; color: var(--text-soft); }
+.crumbs a:hover { color: var(--charcoal); text-decoration: underline; text-underline-offset: 4px; }
+.crumbs [aria-current] { color: var(--charcoal); }
+.pdp { display: grid; gap: clamp(28px, 5vw, 48px); padding-bottom: clamp(48px, 7vw, 88px); }
+@media (min-width: 900px) { .pdp { grid-template-columns: 1.05fr 1fr; gap: clamp(48px, 6vw, 96px); align-items: start; } .pdp-gallery { position: sticky; top: calc(var(--header-h) + 24px); } }
+.pdp-gallery .p-media { border-radius: var(--radius); }
+.gallery-thumbs { display: flex; gap: 10px; margin-top: 12px; }
+.gallery-thumbs button { width: 64px; aspect-ratio: 4 / 5; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; opacity: .7; transition: opacity .2s ease, border-color .2s ease; }
+.gallery-thumbs button:hover { opacity: 1; }
+.gallery-thumbs button[aria-current="true"] { opacity: 1; border-color: var(--charcoal); }
+.gallery-thumbs img { width: 100%; height: 100%; object-fit: cover; }
+.pdp-info .eyebrow { margin-bottom: 12px; }
+.pdp-title { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.08; margin-bottom: 10px; }
+.pdp-content { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--taupe-text); margin-bottom: 18px; }
+.pdp-price { margin-bottom: 10px; }
+.p-price.big { font-size: clamp(1.7rem, 3.4vw, 2.1rem); }
+.p-price.big .p-was { font-size: .7em; }
+.pdp-status { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-soft); margin-bottom: 20px; }
+.pdp-status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--taupe); }
+.pdp-status.is-in .dot { background: var(--success); }
+.pdp-status.is-out .dot { background: var(--error); }
+.pdp-short { color: var(--text-soft); max-width: 32rem; margin-bottom: 28px; }
+.buy { padding-top: 26px; border-top: 1px solid var(--line); max-width: 32rem; }
+.buy-row { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
+.qty { display: inline-flex; align-items: center; border: 1px solid rgba(140, 117, 97, .45); border-radius: 999px; }
+.qty button { width: 46px; height: 46px; font-size: 20px; line-height: 1; border-radius: 50%; color: var(--charcoal); }
+.qty button:hover { background: var(--cream); }
+.qty input { width: 44px; border: 0; background: transparent; text-align: center; font-size: 16px; -moz-appearance: textfield; appearance: textfield; }
+.qty input::-webkit-outer-spin-button, .qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.qty input:focus-visible { outline: none; }
+.buy-btn { flex: 1; min-width: 220px; }
+.buy-msg { font-size: 13px; min-height: 1.4em; margin-top: 12px; color: var(--success); }
+.buy-msg.is-error { color: var(--error); }
+.buy-msg.is-info { color: var(--text-soft); margin-bottom: 18px; }
+.pdp-more { max-width: 52rem; margin-inline: auto; padding-bottom: clamp(40px, 6vw, 72px); }
+.acc { border-top: 1px solid var(--line); }
+.acc:last-child { border-bottom: 1px solid var(--line); }
+.acc summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 22px 0; font-family: var(--serif); font-size: 1.5rem; cursor: pointer; list-style: none; }
+.acc summary::-webkit-details-marker { display: none; }
+.acc summary::after { content: "+"; font-family: var(--sans); font-weight: 300; font-size: 1.4rem; color: var(--taupe); transition: rotate .3s var(--ease); }
+.acc[open] summary::after { rotate: 45deg; }
+.acc-body { padding-bottom: 28px; color: var(--text-soft); }
+.acc-body p + p { margin-top: 1em; }
+.notes { display: grid; gap: 28px; }
+@media (min-width: 700px) { .notes { grid-template-columns: repeat(3, 1fr); gap: 36px; } }
+.note-tier { border-top: 1px solid var(--taupe-light); padding-top: 16px; }
+.note-tier h3 { font-family: var(--sans); font-size: 11px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--charcoal); margin-bottom: 2px; }
+.note-sub { font-size: 12px; color: var(--taupe-text); margin-bottom: 14px; }
+.chips-static { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips-static li { font-family: var(--serif); font-style: italic; font-size: 1.15rem; color: var(--charcoal); }
+.chips-static li:not(:last-child)::after { content: "·"; margin-left: 8px; color: var(--taupe-light); }
+.p-fam { margin-top: 24px; font-size: .95rem; }
+.facts { display: grid; gap: 0; }
+.facts div { display: flex; justify-content: space-between; gap: 20px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.facts div:last-child { border-bottom: 0; }
+.facts dt { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--taupe-text); align-self: center; }
+.facts dd { color: var(--charcoal); text-align: right; }
+
+/* 4. Winkelmand en afrekenen ------------------------------------------------- */
+.cart-layout { display: grid; gap: clamp(36px, 5vw, 64px); align-items: start; }
+@media (min-width: 1000px) { .cart-layout { grid-template-columns: 1.5fr 1fr; } }
+.cart-list { border-top: 1px solid var(--charcoal); }
+.cart-line { display: grid; grid-template-columns: 76px 1fr; gap: 6px 18px; padding: 22px 0; border-bottom: 1px solid var(--line); }
+@media (min-width: 600px) { .cart-line { grid-template-columns: 96px 1fr auto; } }
+.cart-line .p-media { width: 76px; aspect-ratio: 4 / 5; }
+@media (min-width: 600px) { .cart-line .p-media { width: 96px; } }
+.cart-line h3 { font-family: var(--serif); font-size: 1.35rem; font-weight: 500; line-height: 1.25; }
+.cart-line .line-meta { font-size: 12px; color: var(--text-soft); }
+.cart-line .line-note { font-size: 12px; color: var(--error); margin-top: 4px; }
+.cart-line .line-actions { display: flex; align-items: center; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+.cart-line .qty button { width: 38px; height: 38px; }
+.cart-line .qty input { width: 38px; }
+.cart-line .remove { font-size: 12px; color: var(--text-soft); text-decoration: underline; text-underline-offset: 4px; padding: 8px 0; }
+.cart-line .remove:hover { color: var(--error); }
+.cart-line .line-total { grid-column: 2; font-family: var(--serif); font-size: 1.25rem; white-space: nowrap; }
+@media (min-width: 600px) { .cart-line .line-total { grid-column: 3; grid-row: 1; text-align: right; } }
+.cart-summary { background: var(--cream); border-radius: var(--radius-lg); padding: clamp(22px, 3vw, 32px); }
+@media (min-width: 1000px) { .cart-summary { position: sticky; top: calc(var(--header-h) + 24px); } }
+.cart-summary h2 { font-size: 1.7rem; margin-bottom: 14px; }
+.sum-row { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; font-size: 14px; color: var(--text-soft); }
+.sum-row.discount { color: var(--success); }
+.sum-row.total { border-top: 1px solid var(--taupe-light); margin-top: 8px; padding-top: 16px; color: var(--charcoal); font-family: var(--serif); font-size: 1.5rem; }
+.checkout-card { margin-top: clamp(32px, 4vw, 48px); }
+.checkout-card .booking-card { border-radius: var(--radius-lg); }
+.cart-empty { text-align: center; padding: clamp(48px, 8vw, 96px) 0; }
+.cart-empty h2 { font-size: clamp(1.8rem, 4vw, 2.4rem); margin-bottom: 12px; }
+.cart-empty p { color: var(--text-soft); margin-bottom: 28px; }
+.delivery-opts { display: grid; gap: 10px; margin-bottom: 14px; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.order-done { text-align: center; max-width: 40rem; margin-inline: auto; }
+.order-done .order-no { display: inline-block; margin: 6px 0 18px; padding: 6px 18px; border-radius: 999px; background: var(--cream); font-size: 13px; letter-spacing: .12em; }
+.order-done .done-lines { text-align: left; margin: 24px 0; border-top: 1px solid var(--line); }
+.order-done .done-lines li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.order-done .btn-group { justify-content: center; margin-top: 24px; }
+.order-done .btn { width: auto; }
+
+/* 5. Melding na toevoegen ---------------------------------------------------- */
+.cart-toast { position: fixed; left: 50%; bottom: 20px; z-index: 2500; translate: -50% 0; width: min(440px, calc(100vw - 32px));
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px 14px 22px; border-radius: 999px;
+  background: var(--charcoal); color: var(--white); font-size: 14px; box-shadow: 0 20px 50px -18px rgba(41, 36, 32, .55); }
+.cart-toast a { flex: none; padding: 8px 16px; border-radius: 999px; background: var(--taupe-light); color: var(--charcoal); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+.cart-toast a:hover { background: var(--white); }
+@media (prefers-reduced-motion: no-preference) { .cart-toast { animation: toast-in .4s var(--ease); } @keyframes toast-in { from { opacity: 0; translate: -50% 14px; } } }
+
+.section-tight .h-sub { margin-bottom: clamp(22px, 3vw, 34px); }
+
+.notes-line { display: grid; gap: 4px; margin: -8px 0 28px; font-size: 13px; color: var(--text-soft); }
+.notes-line b { font-weight: 500; letter-spacing: .14em; text-transform: uppercase; font-size: 10px; color: var(--taupe-text); margin-right: 8px; }

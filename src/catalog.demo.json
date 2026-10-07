@@ -1,0 +1,358 @@
+{
+ "generated": "DEMO",
+ "categories": [
+  {
+   "slug": "parfums",
+   "name": "Parfums",
+   "description": "Geuren om te dragen als een zachte signatuur.",
+   "attribute_set": "fragrance",
+   "sort_order": 10
+  },
+  {
+   "slug": "beauty",
+   "name": "Beauty",
+   "description": "Verzorging die je huid en zintuigen een moment gunt.",
+   "attribute_set": "none",
+   "sort_order": 20
+  },
+  {
+   "slug": "wellness",
+   "name": "Wellness",
+   "description": "Kaarsen, rituelen en kleine momenten van rust.",
+   "attribute_set": "none",
+   "sort_order": 30
+  },
+  {
+   "slug": "workshops",
+   "name": "Workshops",
+   "description": "Samen leren, voelen en tot rust komen.",
+   "attribute_set": "none",
+   "sort_order": 40
+  },
+  {
+   "slug": "e-books",
+   "name": "E-books",
+   "description": "Digitale gidsen om thuis mee aan de slag te gaan.",
+   "attribute_set": "none",
+   "sort_order": 50
+  },
+  {
+   "slug": "andere-producten",
+   "name": "Andere producten",
+   "description": "Meer van Eluneya.",
+   "attribute_set": "none",
+   "sort_order": 90
+  }
+ ],
+ "brands": [
+  {
+   "slug": "maison-demo",
+   "name": "Maison Demo"
+  }
+ ],
+ "products": [
+  {
+   "id": "42f991e7-c8da-5535-84d8-c60d23ba8730",
+   "slug": "soft-amber",
+   "category": "parfums",
+   "brand": "Maison Demo",
+   "name": "Soft Amber",
+   "short": "Warm, zacht en omhullend.",
+   "description": "Een rustige signatuur van amber en vanille, voor wie een parfum draagt als een zachte omhelzing.\n\nDe geur opent helder en landt zacht op de huid.",
+   "ingredients": "Alcohol denat., parfum, aqua, limonene, linalool, citral.",
+   "content": "50 ml",
+   "type": "physical",
+   "sku": "DEMO-SOFT-",
+   "price": 89,
+   "compare_at": null,
+   "sale_price": null,
+   "sale_starts": null,
+   "sale_ends": null,
+   "availability": "in_stock",
+   "available": true,
+   "featured": true,
+   "sort": 10,
+   "created": "2026-09-01T00:00:00+00:00",
+   "updated": null,
+   "images": [
+    {
+     "url": "/assets/img/geurbeleving-lg.webp",
+     "alt": "Soft Amber"
+    }
+   ],
+   "attributes": {
+    "fragrance_family": "Oriëntaals",
+    "concentration": "Eau de Parfum",
+    "notes": {
+     "top": [
+      "bergamot",
+      "mandarijn"
+     ],
+     "heart": [
+      "roos",
+      "jasmijn"
+     ],
+     "base": [
+      "vanille",
+      "amber",
+      "musk"
+     ]
+    }
+   },
+   "variants": [
+    {
+     "id": "d0d2a7ef-a5f9-5429-9883-2fb9f3043e9b",
+     "label": "30 ml",
+     "price": 59.0,
+     "available": true
+    },
+    {
+     "id": "a7a807c6-94c4-527d-9303-676fd859d4a6",
+     "label": "50 ml",
+     "price": null,
+     "available": true
+    },
+    {
+     "id": "6889ad25-6d86-54c5-b5c7-f44f34cd968a",
+     "label": "100 ml",
+     "price": 119.0,
+     "available": false
+    }
+   ]
+  },
+  {
+   "id": "6aaf8f7f-70ab-54cf-afd3-3ef4e1591f3b",
+   "slug": "white-petal",
+   "category": "parfums",
+   "brand": "Maison Demo",
+   "name": "White Petal",
+   "short": "Helder, bloemig en luchtig.",
+   "description": "Jasmijn en roos in een lichte, frisse opening. Een geur voor lange lentedagen.",
+   "ingredients": "Alcohol denat., parfum, aqua, limonene, linalool, citral.",
+   "content": "50 ml",
+   "type": "physical",
+   "sku": "DEMO-WHITE",
+   "price": 79,
+   "compare_at": null,
+   "sale_price": 69,
+   "sale_starts": null,
+   "sale_ends": null,
+   "availability": "in_stock",
+   "available": true,
+   "featured": true,
+   "sort": 20,
+   "created": "2026-09-01T00:00:00+00:00",
+   "updated": null,
+   "images": [
+    {
+     "url": "/assets/img/massage-hoofd-lg.webp",
+     "alt": "White Petal"
+    }
+   ],
+   "attributes": {
+    "fragrance_family": "Bloemig",
+    "concentration": "Eau de Parfum",
+    "notes": {
+     "top": [
+      "citroen",
+      "peer"
+     ],
+     "heart": [
+      "jasmijn",
+      "pioenroos"
+     ],
+     "base": [
+      "witte musk",
+      "cederhout"
+     ]
+    }
+   },
+   "variants": []
+  },
+  {
+   "id": "e1a66096-0b79-57a8-8b2e-1e676abcf598",
+   "slug": "quiet-wood",
+   "category": "parfums",
+   "brand": "Maison Demo",
+   "name": "Quiet Wood",
+   "short": "Zacht hout en musk.",
+   "description": "Rustig sandelhout met een fluwelen basis van musk. Dagelijks te dragen.",
+   "ingredients": null,
+   "content": "30 ml",
+   "type": "physical",
+   "sku": "DEMO-QUIET",
+   "price": 59,
+   "compare_at": null,
+   "sale_price": null,
+   "sale_starts": null,
+   "sale_ends": null,
+   "availability": "out_of_stock",
+   "available": false,
+   "featured": false,
+   "sort": 30,
+   "created": "2026-09-01T00:00:00+00:00",
+   "updated": null,
+   "images": [
+    {
+     "url": "/assets/img/massage-rug-lg.webp",
+     "alt": "Quiet Wood"
+    }
+   ],
+   "attributes": {
+    "fragrance_family": "Houtig",
+    "concentration": "Eau de Toilette",
+    "notes": {
+     "top": [
+      "kardemom"
+     ],
+     "heart": [
+      "sandelhout"
+     ],
+     "base": [
+      "musk",
+      "vetiver"
+     ]
+    }
+   },
+   "variants": []
+  },
+  {
+   "id": "e26c88c1-1cdf-5d13-a5f0-0e9babe787d2",
+   "slug": "citrus-dawn",
+   "category": "parfums",
+   "brand": "Maison Demo",
+   "name": "Citrus Dawn",
+   "short": "Zonnig, fris en optimistisch.",
+   "description": "Bergamot en citroen openen deze geur; een zachte muskbasis houdt hem lang vast.",
+   "ingredients": null,
+   "content": "100 ml",
+   "type": "physical",
+   "sku": "DEMO-CITRU",
+   "price": 99,
+   "compare_at": null,
+   "sale_price": null,
+   "sale_starts": null,
+   "sale_ends": null,
+   "availability": "in_stock",
+   "available": true,
+   "featured": false,
+   "sort": 40,
+   "created": "2026-09-01T00:00:00+00:00",
+   "updated": null,
+   "images": [
+    {
+     "url": "/assets/img/facial-masker-lg.webp",
+     "alt": "Citrus Dawn"
+    }
+   ],
+   "attributes": {
+    "fragrance_family": "Fris",
+    "concentration": "Eau de Toilette",
+    "notes": {
+     "top": [
+      "bergamot",
+      "citroen"
+     ],
+     "heart": [
+      "neroli"
+     ],
+     "base": [
+      "musk"
+     ]
+    }
+   },
+   "variants": []
+  },
+  {
+   "id": "b7d40af1-d7cf-5172-909d-f01359e6188c",
+   "slug": "reset-kaars",
+   "category": "wellness",
+   "brand": null,
+   "name": "Reset geurkaars",
+   "short": "Sojakaars voor een rustige avond.",
+   "description": "Handgegoten sojakaars met een zachte houtgeur. Brandduur circa 40 uur.",
+   "ingredients": null,
+   "content": "180 g",
+   "type": "physical",
+   "sku": "DEMO-RESET",
+   "price": 28,
+   "compare_at": null,
+   "sale_price": null,
+   "sale_starts": null,
+   "sale_ends": null,
+   "availability": "in_stock",
+   "available": true,
+   "featured": false,
+   "sort": 10,
+   "created": "2026-09-01T00:00:00+00:00",
+   "updated": null,
+   "images": [
+    {
+     "url": "/assets/img/reset-kaars-lg.webp",
+     "alt": "Reset geurkaars"
+    }
+   ],
+   "attributes": {},
+   "variants": []
+  },
+  {
+   "id": "99b15340-5d65-5a90-91c1-aa44d25bab8a",
+   "slug": "rustgids",
+   "category": "e-books",
+   "brand": null,
+   "name": "De rustgids",
+   "short": "Een digitale gids voor dagelijkse rust.",
+   "description": "Korte oefeningen en rituelen om thuis tot rust te komen (PDF).",
+   "ingredients": null,
+   "content": "PDF",
+   "type": "digital",
+   "sku": "DEMO-RUSTG",
+   "price": 14,
+   "compare_at": null,
+   "sale_price": null,
+   "sale_starts": null,
+   "sale_ends": null,
+   "availability": "in_stock",
+   "available": true,
+   "featured": false,
+   "sort": 10,
+   "created": "2026-09-01T00:00:00+00:00",
+   "updated": null,
+   "images": [],
+   "attributes": {},
+   "variants": []
+  },
+  {
+   "id": "6af71875-58a0-5095-aea9-9085230b04b3",
+   "slug": "geurworkshop",
+   "category": "workshops",
+   "brand": null,
+   "name": "Geurworkshop",
+   "short": "Ontdek je eigen geurprofiel.",
+   "description": "Een avond over geurfamilies en noten. Datum en plaats in overleg.",
+   "ingredients": null,
+   "content": "3 uur",
+   "type": "workshop",
+   "sku": "DEMO-GEURW",
+   "price": 45,
+   "compare_at": null,
+   "sale_price": null,
+   "sale_starts": null,
+   "sale_ends": null,
+   "availability": "on_request",
+   "available": false,
+   "featured": false,
+   "sort": 10,
+   "created": "2026-09-01T00:00:00+00:00",
+   "updated": null,
+   "images": [
+    {
+     "url": "/assets/img/binnen-strand-lg.webp",
+     "alt": "Geurworkshop"
+    }
+   ],
+   "attributes": {},
+   "variants": []
+  }
+ ]
+}
