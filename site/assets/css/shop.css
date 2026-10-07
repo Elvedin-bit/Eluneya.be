@@ -167,3 +167,11 @@
 
 .notes-line { display: grid; gap: 4px; margin: -8px 0 28px; font-size: 13px; color: var(--text-soft); }
 .notes-line b { font-weight: 500; letter-spacing: .14em; text-transform: uppercase; font-size: 10px; color: var(--taupe-text); margin-right: 8px; }
+
+/* Mobiel: zoekveld op een eigen rij, de overige filters twee per rij */
+@media (max-width: 639px) {
+  .shop-controls .field:not(:first-child) { flex: 1 1 calc(50% - 7px); min-width: 0; }
+  .shop-controls .select { padding-inline: 12px 34px; font-size: 14px; background-position: right 12px center; }
+  .shop-instock { flex: 1 1 100%; padding-block: 2px 8px; }
+  .shop-toolbar { gap: 14px; }
+}

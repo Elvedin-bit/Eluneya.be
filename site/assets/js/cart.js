@@ -129,7 +129,8 @@
     attrs = Array.isArray(attrs) ? (attrs[0] && attrs[0].data) : (attrs && attrs.data);
     var imgs = (r.product_images || []).slice().sort(function (a, b) { return (b.is_primary - a.is_primary) || (a.sort_order - b.sort_order); });
     return {
-      id: r.id, slug: r.slug, category: r.product_categories && r.product_categories.slug, brand: r.brands && r.brands.name,
+      id: r.id, slug: r.slug, category: r.product_categories && r.product_categories.slug,
+      categoryName: r.product_categories && r.product_categories.name, brand: r.brands && r.brands.name,
       name: r.name, short: r.short_description, description: r.description, ingredients: r.ingredients, content: r.content_label,
       type: r.product_type, sku: r.sku, price: Number(r.price_eur),
       compare_at: r.compare_at_price_eur != null ? Number(r.compare_at_price_eur) : null,

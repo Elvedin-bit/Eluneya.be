@@ -10,6 +10,14 @@
     X-Frame-Options = "SAMEORIGIN"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
 
+# Webshop: een product dat net is toegevoegd heeft nog geen vaste pagina (die komt bij de volgende build).
+# Bestaat /shop/<categorie>/<product>/ als bestand, dan wint dat bestand (geen "force"); anders toont
+# Netlify de generieke productpagina, die het product live ophaalt.
+[[redirects]]
+  from = "/shop/:category/:product"
+  to = "/shop/product.html"
+  status = 200
+
 [[headers]]
   for = "/assets/fonts/*"
   [headers.values]

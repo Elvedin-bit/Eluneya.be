@@ -488,5 +488,11 @@ def build(write_page, domain, out, wa_link, cta_band, **_):
             meta["og_image"] = meta["og_image"].replace("{DOMAIN}", domain)
         body = body.replace("@@CTA@@", cta_band(title="Hulp nodig bij je keuze?", text="Twijfel je tussen twee geuren of zoek je een cadeau? Stuur Aida gerust een bericht.", btn_href="afspraak.html", btn="Maak afspraak"))
         write_page(meta, path, body, "/", active)
+    # Generieke productpagina voor producten die nog geen vaste pagina hebben (Netlify-rewrite in netlify.toml)
+    write_page({"title": "Product | Eluneya", "description": "Product van Eluneya.", "noindex": True, "styles": ["shop.css"],
+                "extra_head": '\n  <script src="{BASE}assets/js/catalog.js" defer></script>\n  <script src="{BASE}assets/js/product.js" defer></script>'},
+               "shop/product.html",
+               '<main id="inhoud" class="shop product" data-product-dynamic><div class="container"><p class="lead" style="padding:48px 0">Even laden…</p></div></main>',
+               "/", "shop")
     (out / "assets" / "js" / "catalog.js").write_text(catalog_js(), encoding="utf-8")
     print("gebouwd: assets/js/catalog.js")

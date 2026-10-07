@@ -19,6 +19,7 @@ src/
   check.py, check_booking.py, check_promotions*.py   automatische controles (optioneel, vereisen Playwright; check_promotions_sql.py een wegwerp-PostgreSQL)
 supabase/
   schema.sql          database voor de agenda (eenmalig uitvoeren)
+  shop.sql            database voor de webshop (apart, idempotent; zie "Webshop")
   functions/booking-notify/index.ts   optionele e-mailmelding bij een nieuwe afspraak
 ```
 
@@ -64,6 +65,93 @@ Aida beheert ze zelf in **/admin.html → tabblad Promoties**: toevoegen, bewerk
 - **Prijzen:** de prijs in `treatments` verandert nooit. De server (`get_price_quote` en `book_appointment`) berekent de korting; `bookings` bewaart de betaalde prijs (`price_eur`), de normale prijs (`list_price_eur`), de korting (`discount_eur`) en een momentopname van de promotie. Een bestaande afspraak behoudt dus altijd haar prijs, ook als de promotie later wijzigt of verdwijnt.
 - **Afbeeldingen** komen in de openbare opslagmap `promotions` (enkel admins kunnen uploaden). Maak ze 16:9, JPG/PNG/WebP, max. 2 MB.
 - Na een update van `schema.sql` is er niets extra nodig: voer het bestand opnieuw uit.
+
+## Webshop (parfums en meer)
+
+Eén geïntegreerde shop in dezelfde site: `/shop/`, `/shop/<categorie>/` en `/shop/<categorie>/<product>/`, een winkelmand
+(`winkelmand.html`, bewaard in de browser) en een **bestelaanvraag** (geen online betaling: Aida bevestigt en spreekt betaling
+en levering af, bv. via WhatsApp). Parfums zijn de eerste categorie; Beauty, Wellness, Workshops, E-books en eigen categorieën
+gebruiken dezelfde structuur.
+
+**Zolang `src/catalog.json` geen producten bevat, is de shop onzichtbaar**: geen menu-item, geen winkelmandicoon, geen pagina's in
+de sitemap. De bestaande site wordt dan byte voor byte identiek gebouwd.
+
+### Opbouw
+
+| Onderdeel | Bestand |
+|---|---|
+| Database (tabellen, RLS, `place_order`) | `supabase/shop.sql` (apart van `schema.sql`) |
+| Demogegevens voor een testomgeving — **niet voor productie** | `supabase/shop_demo.sql`, `src/catalog.demo.json` |
+| Pagina's, menu, SEO, catalogus-momentopname | `src/shop.py` (aangeroepen door `build.py`), `src/pages/winkelmand.html` |
+| Winkelmand (localStorage) en gedeelde functies | `site/assets/js/cart.js` |
+| Overzicht, filters, zoeken · productpagina · afrekenen | `shop.js` · `product.js` · `checkout.js` |
+| Stijl | `site/assets/css/shop.css` (+ kleine aanvulling in `style.css` voor menu/winkelmandicoon) |
+| Beheer (tabblad **Shop** in `admin.html`) | `site/assets/js/admin-shop.js` |
+| Tests van de database | `src/check_shop_sql.mjs` (lokale wegwerp-Postgres via PGlite) |
+
+Datamodel: `product_categories` (met `attribute_set`, bv. `fragrance` voor geurprofiel; `parent_id` voor subcategorieën),
+`brands`, `products`, `product_attributes` (jsonb: geurfamilie, concentratie, top-/hart-/basisnoten, later andere velden),
+`product_images`, `product_variants` (fundering voor volumes; nog niet in de admin), `orders` en `order_items`.
+Betaling zit bewust los van de bestelling (`payment_status`, `payment_provider`, `payment_reference`): een betaalprovider
+(Mollie, …) kan later toegevoegd worden zonder tabellen te herschrijven.
+
+### Beveiliging (RLS)
+
+- Bezoekers (anon) lezen enkel **actieve** producten in **actieve** categorieën, en enkel publieke kolommen. De voorraad
+  (`stock_qty`, `track_stock`) is niet leesbaar; `is_available` geeft enkel aan of iets bestelbaar is.
+- Bezoekers kunnen niet rechtstreeks in `orders`/`order_items` lezen of schrijven. Bestellen gaat enkel via `place_order()`:
+  prijzen, actieprijzen (met datums), voorraad en totaal worden server-side berekend; de browser kan geen prijs doorgeven.
+  Max. 3 openstaande aanvragen per e-mailadres, max. 10 stuks per product, honeypot-veld in het formulier.
+- Enkel accounts in `admins` beheren producten/categorieën/voorraad en lezen bestellingen. Admins kunnen van een bestelling enkel
+  status, betaalstatus en notities wijzigen (geen bedragen of klantgegevens), nooit verwijderen. Annuleren zet de voorraad terug.
+- Controle: `PGLITE_DIR=<map met node_modules/@electric-sql/pglite> node src/check_shop_sql.mjs`
+  (eenmalig: `npm i @electric-sql/pglite` in een lege map). Draait nooit tegen een echte database.
+
+### Producten beheren (Aida)
+
+`/admin.html` → tabblad **Shop**: *Bestellingen* (status, betaling, WhatsApp/e-mail naar de klant), *Producten* (prijs,
+promotieprijs met optionele datums, foto's, parfumvelden, voorraad, actief/uitgelicht), *Categorieën*, *Voorraad*.
+Een nieuw product is eerst niet zichtbaar tot je het activeert. Zodra het actief is, staat het meteen in de shop en kan het besteld
+worden (de generieke pagina `shop/product.html` haalt het live op). De vaste, door Google indexeerbare productpagina ontstaat bij de
+volgende publicatie (zie hieronder).
+
+### Vaste productpagina's publiceren
+
+```
+python3 src/build.py --fetch-catalog   # haalt de actieve catalogus op (enkel leesrechten) en bewaart src/catalog.json
+git add -A && git commit -m "Catalogus bijgewerkt" && git push
+```
+
+Prijzen en voorraad op de pagina's worden bij het openen live vernieuwd; enkel nieuwe producten/teksten/foto's hebben een publicatie nodig.
+`netlify.toml` bevat de rewrite voor producten zonder vaste pagina.
+
+### Wat er nodig is om de shop op productie te zetten (nog NIET gedaan)
+
+Er is bewust niets op de productiedatabase uitgevoerd. Volgorde:
+
+1. **`supabase/shop.sql`** uitvoeren in Supabase → SQL Editor. Idempotent en zelfstandig: het maakt zelf `admins` en `is_admin()`
+   aan als ze nog niet bestaan (identiek aan `schema.sql`), de tabellen, RLS, `place_order`, de openbare opslagmap `products` en de
+   zes basiscategorieën.
+   *(Let op: de live database bevatte bij de laatste controle nog niet de agenda uit `schema.sql` (`treatments`, `bookings`,
+   `promotions`). Voor de afsprakenmodule is `schema.sql` nog steeds nodig; de volgorde van beide scripts maakt niet uit.)*
+2. Aida beheerrechten geven (zoals bij de agenda), met haar login-e-mailadres:
+   ```sql
+   insert into public.admins (user_id)
+   select id from auth.users where email = 'HAAR-EMAIL' on conflict do nothing;
+   ```
+3. Controleer onder Authentication dat "Allow new users to sign up" **uit** staat.
+4. Eerste producten toevoegen via `/admin.html` → Shop, daarna `python3 src/build.py --fetch-catalog` en pushen.
+   Pas dan verschijnt Shop in het menu.
+5. Niet uitvoeren op productie: `supabase/shop_demo.sql` (verzonnen producten).
+
+### Nog te beslissen voor de lancering (niet technisch)
+
+- **Algemene voorwaarden en privacyverklaring** vermelden de webshop nog niet (herroepingsrecht bij verkoop op afstand, levering,
+  bewaartermijn van bestelgegevens). Laat die teksten nakijken vóór de eerste verkoop.
+- **Btw en verzendkosten**: prijzen worden als "inclusief btw" getoond; verzendkosten zijn nu "in overleg".
+- **E-mailmelding voor nieuwe bestellingen** bestaat nog niet (Aida ziet ze in de admin; het tabblad toont het aantal nieuwe).
+  `supabase/functions/booking-notify` kan als voorbeeld dienen.
+- **Online betaling**: later via een betaalprovider; `orders.payment_*` staat klaar.
 
 ## Online zetten
 
