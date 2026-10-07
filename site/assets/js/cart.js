@@ -138,7 +138,8 @@
   }
 
   /* ---------- Supabase (enkel lezen, publieke sleutel) ---------- */
-  var live = /^https:\/\/[^\s]+$/.test(CFG.supabaseUrl || '') && !!CFG.supabaseKey;
+  // https; http alleen voor een lokale teststack (localhost / 127.0.0.1)
+  var live = /^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)[:/])[^\s]+$/.test(CFG.supabaseUrl || '') && !!CFG.supabaseKey;
   function rest(query) {
     if (!live) { return Promise.reject(new Error('niet gekoppeld')); }
     var headers = { apikey: CFG.supabaseKey, Accept: 'application/json' };

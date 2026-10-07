@@ -32,6 +32,8 @@ EMPTY = {"generated": None, "categories": [], "brands": [], "products": []}
 # Catalogus laden / vernieuwen
 # ---------------------------------------------------------------------------
 def _config():
+    if os.environ.get("ELUNEYA_SUPABASE_URL"):   # enkel voor tests: een testomgeving i.p.v. de URL uit config.js
+        return os.environ["ELUNEYA_SUPABASE_URL"].rstrip("/"), os.environ.get("ELUNEYA_SUPABASE_KEY", "")
     txt = (ROOT / "site" / "assets" / "js" / "config.js").read_text(encoding="utf-8")
     url = re.search(r"supabaseUrl:\s*'([^']+)'", txt).group(1).rstrip("/")
     key = re.search(r"supabaseKey:\s*'([^']+)'", txt).group(1)

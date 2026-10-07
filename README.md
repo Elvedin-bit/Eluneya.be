@@ -88,10 +88,20 @@ de sitemap. De bestaande site wordt dan byte voor byte identiek gebouwd.
 | Stijl | `site/assets/css/shop.css` (+ kleine aanvulling in `style.css` voor menu/winkelmandicoon) |
 | Beheer (tabblad **Shop** in `admin.html`) | `site/assets/js/admin-shop.js` |
 | Tests van de database | `src/check_shop_sql.mjs` (lokale wegwerp-Postgres via PGlite) |
+| Integratietests tegen echte PostgreSQL + PostgREST, migratie-oefening, SQL-audit | `test/e2e/` (zie `test/e2e/README.md`) |
+| Controle na een migratie (alleen lezen) | `supabase/verify.sql` |
+| Plan voor de migratie naar productie | `docs/PRODUCTIE-PLAN.md` |
 
 Datamodel: `product_categories` (met `attribute_set`, bv. `fragrance` voor geurprofiel; `parent_id` voor subcategorieën),
 `brands`, `products`, `product_attributes` (jsonb: geurfamilie, concentratie, top-/hart-/basisnoten, later andere velden),
-`product_images`, `product_variants` (fundering voor volumes; nog niet in de admin), `orders` en `order_items`.
+`product_images`, `product_variants`, `orders` en `order_items`.
+
+**Varianten (formaten):** Aida bepaalt per product zelf welke varianten er zijn (bv. enkel 15 ml en 70 ml; er zijn geen vaste
+formaten). Elke variant heeft een naam, inhoud (ml), productcode (SKU), eigen prijs (leeg = productprijs, en dan geldt ook de
+actieprijs van het product), eigen voorraad (leeg = niet bijgehouden) en een actief/inactief-schakelaar. Heeft een product
+varianten, dan is een gekozen variant verplicht; de voorraad zit per variant; het product is uitverkocht als geen enkele variant
+nog beschikbaar is. De gekozen variant gaat mee naar winkelmand, `place_order`, `order_items` (id, naam, SKU, prijs) en wordt bij
+annulering teruggeboekt op de plek waar ze afgeboekt werd (`order_items.stock_effect`).
 Betaling zit bewust los van de bestelling (`payment_status`, `payment_provider`, `payment_reference`): een betaalprovider
 (Mollie, …) kan later toegevoegd worden zonder tabellen te herschrijven.
 

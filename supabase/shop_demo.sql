@@ -45,3 +45,14 @@ with c as (select id from public.product_categories where slug = 'workshops')
 insert into public.products (slug, name, category_id, short_description, description, product_type, price_eur, is_active, sort_order, availability)
 select 'geurworkshop', 'Geurworkshop', c.id, 'Ontdek je eigen geurprofiel.', 'Een avond over geurfamilies en noten. Datum en plaats in overleg.', 'workshop', 45.00, true, 10, 'on_request' from c
 on conflict (slug) do nothing;
+
+-- Varianten voor Soft Amber (enkel demo): 15 ml, 30 ml en 70 ml; Aida bepaalt in de admin zelf welke formaten een product heeft.
+insert into public.product_variants (product_id, label, volume_ml, sku, price_eur, stock_qty, sort_order)
+select p.id, v.label, v.volume, v.sku, v.price, v.stock, v.sort
+  from public.products p, (values
+    ('15 ml', 15, 'DEMO-001-15', 29.00, 5, 0),
+    ('30 ml', 30, 'DEMO-001-30', 49.00, 3, 1),
+    ('70 ml', 70, 'DEMO-001-70', 89.00, 0, 2)
+  ) as v(label, volume, sku, price, stock, sort)
+ where p.slug = 'soft-amber'
+on conflict do nothing;

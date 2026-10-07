@@ -1,2 +1,5 @@
 __pycache__/
 .DS_Store
+test/e2e/node_modules/
+test/e2e/.bin/
+test/e2e/.data/

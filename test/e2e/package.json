@@ -1,0 +1,14 @@
+{
+  "name": "eluneya-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Lokale testopstelling voor de webshop: echte PostgreSQL + echte PostgREST (zoals Supabase). Raakt nooit een echte Supabase.",
+  "scripts": {
+    "stack": "node stack.mjs",
+    "test": "node check_shop_e2e.mjs"
+  },
+  "dependencies": {
+    "embedded-postgres": "^17.10.0-beta.17",
+    "pg": "^8.23.1"
+  }
+}
