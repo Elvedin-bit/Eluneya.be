@@ -1,0 +1,23 @@
+import { readFileSync } from 'node:fs';
+const cfg = readFileSync('site/assets/js/config.js', 'utf8');
+const url = cfg.match(/supabaseUrl:\s*'([^']+)'/)[1], key = cfg.match(/supabaseKey:\s*'([^']+)'/)[1];
+const H = { apikey: key, 'Content-Type': 'application/json', Accept: 'application/json' };
+const call = async (m, p, body) => { const r = await fetch(`${url}/rest/v1/${p}`, { method: m, headers: H, body: body === undefined ? undefined : JSON.stringify(body) }); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch {} return { s: r.status, j, t }; };
+let fails = 0; const ck = (n, c, i = '') => { console.log((c ? '  ok   ' : '  FOUT ') + n + (!c && i ? ` [${String(i).slice(0, 160)}]` : '')); if (!c) fails++; };
+const denied = (r) => [401, 403].includes(r.s) && (r.j?.code === '42501' || /permission denied|row-level/i.test(r.t));
+let r;
+r = await call('POST', 'rpc/get_booked_slots', { p_from: '2026-10-12', p_to: '2026-10-18' }); ck('agenda: get_booked_slots werkt voor bezoekers (lege week)', r.s === 200 && Array.isArray(r.j), r.t);
+r = await call('POST', 'rpc/get_price_quote', { p_service: 'back-in-control' }); ck('agenda: get_price_quote geeft € 50 voor Back in control', r.s === 200 && Number(r.j?.price) === 50, r.t);
+r = await call('GET', 'promotions?select=id,title'); ck('promoties: tabel leesbaar (geen lopende promoties)', r.s === 200 && Array.isArray(r.j) && r.j.length === 0, r.t);
+r = await call('GET', 'promotions?select=promo_code'); ck('promoties: promo_code niet leesbaar', denied(r), r.t);
+r = await call('GET', 'product_categories?select=slug&order=sort_order'); ck('shop: 6 categorieën publiek leesbaar', r.s === 200 && r.j?.length === 6, r.t);
+r = await call('GET', 'products?select=id,name'); ck('shop: producten (nog geen) leesbaar zonder fout', r.s === 200 && r.j?.length === 0, r.t);
+r = await call('GET', 'products?select=stock_qty'); ck('shop: voorraad niet leesbaar', denied(r), r.t);
+for (const t of ['orders', 'order_items', 'admins', 'bookings', 'closures', 'treatments', 'opening_hours']) { r = await call('GET', `${t}?select=*`); ck(`privé: ${t} niet leesbaar voor bezoekers`, denied(r), `${r.s} ${r.t}`); }
+r = await call('POST', 'rpc/is_admin'); ck('privé: is_admin() niet aanroepbaar', denied(r), r.t);
+r = await call('POST', 'orders', { customer_name: 'x', customer_email: 'a@b.be', subtotal_eur: 1, total_eur: 1 }); ck('privé: rechtstreeks een order schrijven geweigerd', denied(r), r.t);
+r = await call('POST', 'appointments', { service_name: 'x', appointment_date: '2030-01-01', appointment_time: '10:00', client_name: 'x', client_email: 'a@b.be', status: 'confirmed' }); ck('oude appointments: anon kan niet meer boeken', denied(r), `${r.s} ${r.t}`);
+r = await call('GET', 'appointments?select=*'); ck('oude appointments: anon kan niets lezen', denied(r) || (r.s === 200 && r.j?.length === 0), `${r.s} ${r.t}`);
+r = await call('POST', 'rpc/place_order', { p_items: [], p_name: 'x', p_email: 'a@b.be', p_consent: true }); ck('shop: place_order bestaat en weigert een lege bestelling (niets geschreven)', r.s === 400 && /lege_bestelling/.test(r.t), r.t);
+r = await call('POST', 'rpc/place_order', { p_items: [{ product_id: '00000000-0000-0000-0000-000000000000', qty: 1 }], p_name: 'x', p_email: 'a@b.be', p_consent: true, p_price: 0.01 }); ck('shop: een prijs meesturen kan niet (onbekende parameter)', !(r.s === 200), `${r.s} ${r.t}`);
+console.log(fails ? `\n${fails} MISLUKT` : '\nProductie-API (als bezoeker) in orde'); process.exit(fails ? 1 : 0);

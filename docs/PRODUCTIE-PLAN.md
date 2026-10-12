@@ -1,7 +1,15 @@
 # Productieplan: agenda, promoties en webshop live zetten
 
-**Status: voorbereid, NIETS uitgevoerd op productie.** Geen SQL op het project "Eluneya" (`jdfcheqimbxffxldedey`), geen productiegegevens
-aangeraakt, niets gepusht. Alles hieronder is vooraf geoefend op wegwerpdatabases (zie §9).
+**Status: UITGEVOERD op 12 oktober 2026** op het project "Eluneya" (`jdfcheqimbxffxldedey`), met uitdrukkelijk akkoord van de eigenaar:
+
+1. `shop.sql` (migratie `eluneya_shop_webshop`) → 2. Aida (`eluneya.aida@gmail.com`) in `admins` → 3. `schema.sql` (migratie `eluneya_agenda_promoties_admin`).
+`verify.sql` na elke stap zoals voorspeld; na stap 3: **alle 50 controles in orde**. De oude tabellen zijn ongewijzigd (7 behandelingen, 2 afspraken).
+
+**Correctie op eerdere versies van dit plan:** de oude tabellen waren niet leeg. `services` bevat 7 voorbeeldbehandelingen en `appointments` 2 **geannuleerde** testafspraken
+van 20 juli (de eerdere "0 rijen" kwam uit verouderde tabelstatistieken). Er werd niets overgezet (enkel *toekomstige bevestigde* afspraken worden gekopieerd) en niets verwijderd of gewijzigd.
+De bestaande policy "Alleen Eluneya admin heeft toegang" (enkel Aida's gebruiker) op `appointments` blijft behouden; "Publiek kan boeken" is zoals gepland verwijderd.
+
+De rest van dit document beschrijft het plan en de achtergrond (nog geldig als naslag en voor een eventuele herhaling). Controle achteraf als bezoeker: `node test/prod_check.mjs`.
 
 ---
 
@@ -22,14 +30,14 @@ aangeraakt, niets gepusht. Alles hieronder is vooraf geoefend op wegwerpdatabase
 
 | Onderdeel | Bevinding |
 |---|---|
-| Supabase-project "Eluneya" (eu-west-1, org *Bprojects*, **free plan**) | `public`: enkel `services` en `appointments` (RLS aan, **0 rijen** bij de laatste controle). Geen migraties, geen branches. |
+| Supabase-project "Eluneya" (eu-west-1, org *Bprojects*, **free plan**) | `public`: enkel `services` en `appointments` (RLS aan; 7 voorbeeldbehandelingen en 2 geannuleerde testafspraken, geen echte klanten). Geen migraties, geen branches. |
 | Project "HimalayanWok website" | andere zaak, gepauzeerd; **niet aanraken**. |
 | `eluneya.be` | SalonRound (derde partij). |
 | `eluneya-be.netlify.app` (Netlify-project `eluneya-be`) | **Sinds 12 okt 2026 de nieuwe site** (commit `4a936ad`, automatisch gedeployed na de push; 55/55 bestanden gecontroleerd). Tot dan draaide hier de oude eenpagina-site (deploy van 20 juli, commit `14128a5`) die `appointments`, `services` en `public_booked_slots` rechtstreeks gebruikte. Zolang `schema.sql` niet is uitgevoerd valt de afspraakpagina terug op WhatsApp/telefoon en toont de admin 'Database nog niet klaar'; de shop is onzichtbaar (geen producten). |
 | Git (`Elvedin-bit/Eluneya.be`, publiek) | Alles gepusht op 12 okt 2026; `origin/main` = `4a936ad` (en later). Een push op `main` start automatisch een Netlify-deploy. |
 | Oude `public_booked_slots` | view met `security_invoker`; omdat anon geen select-policy op `appointments` heeft, geeft ze voor bezoekers al geen rijen terug (bestaand gedrag, niet nieuw). |
 
-**Voor je begint, opnieuw controleren** (alleen lezen, in de SQL Editor): `select count(*) from public.services; select count(*) from public.appointments;`
+**Voor je begint, opnieuw controleren** (alleen lezen, in de SQL Editor): `select count(*) from public.services; select count(*) from public.appointments;` (let op: het tabeloverzicht van de Supabase-interface toont geschatte aantallen, die kunnen 0 tonen terwijl er rijen zijn)
 Zijn er rijen, exporteer ze eerst (Table Editor → Export CSV). Het free plan heeft geen automatische back-ups om op te vertrouwen.
 
 ## 3. Welke bestanden, in welke volgorde
@@ -107,7 +115,7 @@ intakegesprek (30 min); controleer de overgezette afspraken in de admin.
 | 1 | `schema.sql` blokkeert de oude site (boeken + admin) | Hoog zodra de oude site echt gebruikt wordt | Uitvoeren vlak vóór de push; beheerders vooraf in `admins`; communiceer even geen online boekingen. Terugdraaien: §10. |
 | 2 | Niemand is beheerder → admin toont "Geen toegang" | Midden | Stap 1b vóór stap 2; `verify.sql` meldt "minstens één beheerder". |
 | 3 | `delete from opening_hours` bij herhaling | Laag | Openingsuren enkel in `build.py` beheren. |
-| 4 | Oude afspraken met onbekende behandeling → 30 min | Laag | Na stap 2 de overgezette afspraken nalopen. Nu: 0 rijen. |
+| 4 | Oude afspraken met onbekende behandeling → 30 min | Laag | Na stap 2 de overgezette afspraken nalopen. Bij de uitvoering: 2 geannuleerde testafspraken, niets overgezet. |
 | 5 | Pushen vóór de SQL | Midden | Site toont automatisch WhatsApp/telefoon als de agenda niet bereikbaar is; toch eerst SQL, dan push. Shop is onzichtbaar zonder producten. |
 | 6 | Testbestellingen kunnen niet verwijderd worden (bewust) | Laag | Test met je eigen e-mail en annuleer; de bestelling blijft als "geannuleerd" staan. |
 | 7 | Free plan: project pauzeert na inactiviteit; geen automatische back-ups | Midden | Export vóór migratie; later Pro of regelmatige export overwegen. |
