@@ -92,6 +92,7 @@ de sitemap. De bestaande site wordt dan byte voor byte identiek gebouwd.
 | Controle na een migratie (alleen lezen) | `supabase/verify.sql` |
 | Plan voor de migratie naar productie | `docs/PRODUCTIE-PLAN.md` |
 | Controle van de gebouwde site (links, afbeeldingen, metadata, JSON-LD, sitemap, geheimen, plaatshouders) | `node test/site_check.mjs` |
+| Controle van een gepubliceerde site (live = lokaal, headers, routes) | `node test/live_check.mjs https://eluneya-be.netlify.app` |
 | Voorbeeldbestand van de hele site (ook shop) om door te sturen | `python3 src/preview.py` → `voorbeeld/eluneya-voorbeeld.html` (zie `src/preview.py`) |
 
 Datamodel: `product_categories` (met `attribute_set`, bv. `fragrance` voor geurprofiel; `parent_id` voor subcategorieën),

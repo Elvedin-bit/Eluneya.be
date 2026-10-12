@@ -25,8 +25,8 @@ aangeraakt, niets gepusht. Alles hieronder is vooraf geoefend op wegwerpdatabase
 | Supabase-project "Eluneya" (eu-west-1, org *Bprojects*, **free plan**) | `public`: enkel `services` en `appointments` (RLS aan, **0 rijen** bij de laatste controle). Geen migraties, geen branches. |
 | Project "HimalayanWok website" | andere zaak, gepauzeerd; **niet aanraken**. |
 | `eluneya.be` | SalonRound (derde partij). |
-| `eluneya-be.netlify.app` (Netlify-project `eluneya-be`) | **oude eenpagina-site**: gebruikt `appointments` (insert door anon, admin), `services` en `public_booked_slots` rechtstreeks. `afspraak.html` en `/shop/` bestaan er niet (404). |
-| Git (`Elvedin-bit/Eluneya.be`) | Lokaal staan er **onge-pushte commits** (shop, varianten, tests, plan). `origin/main` eindigt op `182ef03` (promoties). Er is niet gepusht. |
+| `eluneya-be.netlify.app` (Netlify-project `eluneya-be`) | **Sinds 12 okt 2026 de nieuwe site** (commit `4a936ad`, automatisch gedeployed na de push; 55/55 bestanden gecontroleerd). Tot dan draaide hier de oude eenpagina-site (deploy van 20 juli, commit `14128a5`) die `appointments`, `services` en `public_booked_slots` rechtstreeks gebruikte. Zolang `schema.sql` niet is uitgevoerd valt de afspraakpagina terug op WhatsApp/telefoon en toont de admin 'Database nog niet klaar'; de shop is onzichtbaar (geen producten). |
+| Git (`Elvedin-bit/Eluneya.be`, publiek) | Alles gepusht op 12 okt 2026; `origin/main` = `4a936ad` (en later). Een push op `main` start automatisch een Netlify-deploy. |
 | Oude `public_booked_slots` | view met `security_invoker`; omdat anon geen select-policy op `appointments` heeft, geeft ze voor bezoekers al geen rijen terug (bestaand gedrag, niet nieuw). |
 
 **Voor je begint, opnieuw controleren** (alleen lezen, in de SQL Editor): `select count(*) from public.services; select count(*) from public.appointments;`
@@ -42,7 +42,7 @@ Alles uitvoeren in Supabase-dashboard → **SQL Editor** → bestand plakken →
 | 1 | `supabase/shop.sql` | Webshop: tabellen, RLS, `place_order`, opslagmap `products`, 6 basiscategorieën | **nee** |
 | 1b | `insert into public.admins (user_id) select id from auth.users where email = 'HAAR-EMAIL' on conflict do nothing;` | Aida als beheerder (haar account bestaat al onder Authentication → Users) | nee |
 | 2 | `supabase/schema.sql` | Agenda, promoties, admin, opslagmap `promotions`, overzetten oude afspraken | **ja: oude site kan niet meer boeken** (zie §5) |
-| 3 | `git push` | Nieuwe site naar Netlify (shop blijft onzichtbaar tot er producten zijn) | vervangt de oude site |
+| 3 | `git push` | **Gedaan op 12 okt 2026** (nieuwe site op `eluneya-be.netlify.app`; shop onzichtbaar tot er producten zijn) | verving de oude site |
 | 4 | Admin → Shop → producten toevoegen, dan `python3 src/build.py --fetch-catalog`, commit, push | Shop zichtbaar maken | nee |
 
 `schema.sql` en `shop.sql` zijn **idempotent** (opnieuw uitvoeren is veilig) en onafhankelijk (`shop.sql` maakt zelf `admins` en
