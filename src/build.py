@@ -41,7 +41,7 @@ SITE = {
     "phone_e164": "+32483005304",
     # CONTROLEREN: aangenomen dat WhatsApp op hetzelfde nummer werkt
     "whatsapp": "32483005304",
-    "email": "[IN TE VULLEN: e-mailadres]",
+    "email": "eluneya.aida@gmail.com",   # ook het login-adres van de admin (Aida)
     "vat_display": "BE 1033.875.191",
     "vat_id": "BE1033875191",
     "kbo": "1033.875.191",
@@ -204,7 +204,7 @@ def contact_lines():
     return f"""<ul class="contact-lines">
   <li><a href="{wa_link()}" target="_blank" rel="noopener">{ICONS['whatsapp']}<span>WhatsApp<span class="visually-hidden"> (opent in nieuw venster)</span></span></a></li>
   <li><a href="tel:{s['phone_e164']}">{ICONS['phone']}<span>{s['phone_display']}</span></a></li>
-  <li><!-- IN TE VULLEN: e-mailadres (ook in href) --><a href="mailto:{s['email']}">{ICONS['mail']}<span>{s['email']}</span></a></li>
+  <li><a href="mailto:{s['email']}">{ICONS['mail']}<span>{s['email']}</span></a></li>
   <li><a href="{maps}" target="_blank" rel="noopener">{ICONS['pin']}<span>{s['street']}, {s['postal']} {s['city']}<span class="visually-hidden"> (route in Google Maps, nieuw venster)</span></span></a></li>
   <li><a href="{s['instagram']}" target="_blank" rel="noopener">{ICONS['instagram']}<span>{s['instagram_handle']}<span class="visually-hidden"> op Instagram (nieuw venster)</span></span></a></li>
 </ul>"""
@@ -268,7 +268,7 @@ def footer():
           <li>{s['street']}<br>{s['postal']} {s['city']}</li>
           <li><a href="tel:{s['phone_e164']}">{s['phone_display']}</a></li>
           <li><a href="{wa_link()}" target="_blank" rel="noopener">WhatsApp</a></li>
-          <li><!-- IN TE VULLEN: e-mailadres --><a href="mailto:{s['email']}">{s['email']}</a></li>
+          <li><a href="mailto:{s['email']}">{s['email']}</a></li>
           <li><a href="{s['instagram']}" target="_blank" rel="noopener">Instagram</a></li>
         </ul>
       </div>
@@ -368,6 +368,7 @@ def business_ld():
         "image": s["domain"] + "/og-image.jpg",
         "logo": s["domain"] + "/icon-512.png",
         "telephone": s["phone_e164"],
+        "email": s["email"],
         "vatID": s["vat_id"],
         "priceRange": price_range(),
         "address": {"@type": "PostalAddress", "streetAddress": s["street"], "postalCode": s["postal"],
@@ -379,7 +380,6 @@ def business_ld():
             for d, (o, c) in sorted(HOURS.items(), key=lambda kv: (kv[0] or 7))],
         "hasOfferCatalog": {"@type": "OfferCatalog", "name": "Behandelingen", "itemListElement": offers},
     }
-    # NB: e-mail bewust niet opgenomen zolang het adres niet ingevuld is.
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
